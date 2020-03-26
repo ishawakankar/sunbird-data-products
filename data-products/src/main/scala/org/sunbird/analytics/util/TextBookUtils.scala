@@ -92,7 +92,9 @@ object TextBookUtils {
       val medium = if(null != response.medium) response.medium.asInstanceOf[List[String]].mkString(",") else ""
       val subject = if(null != response.subject) response.subject.asInstanceOf[List[String]].mkString(",") else ""
       val gradeLevel = if(null != response.gradeLevel) response.gradeLevel.mkString(",") else ""
-      val dceDf = DCETextbookData(response.channel,response.identifier, response.name, medium, gradeLevel, subject,response.createdOn.substring(0,10), response.lastUpdatedOn.substring(0,10),totalQRCodes,qrLinked,qrNotLinked,term1NotLinked,term2NotLinked)
+      val createdOn = if(null != response.createdOn) response.createdOn.substring(0,10) else ""
+      val lastUpdatedOn = if(null != response.lastUpdatedOn) response.lastUpdatedOn.substring(0,10) else ""
+      val dceDf = DCETextbookData(response.channel,response.identifier, response.name, medium, gradeLevel, subject,createdOn, lastUpdatedOn,totalQRCodes,qrLinked,qrNotLinked,term1NotLinked,term2NotLinked)
       dceReport = dceDf::dceReport
     }
     dceReport
@@ -141,7 +143,9 @@ object TextBookUtils {
       val medium = if(null != response.medium) response.medium.asInstanceOf[List[String]].mkString(",") else ""
       val subject = if(null != response.subject) response.subject.asInstanceOf[List[String]].mkString(",") else ""
       val gradeLevel = if(null != response.gradeLevel) response.gradeLevel.mkString(",") else ""
-      val textbookDf = ETBTextbookData(response.channel,response.identifier,response.name,medium,gradeLevel,subject,response.status,response.createdOn.substring(0,10),response.lastUpdatedOn.substring(0,10),response.leafNodesCount,qrLinkedContent,qrNotLinked,totalLeafNodes,leafNodeswithoutContent)
+      val createdOn = if(null != response.createdOn) response.createdOn.substring(0,10) else ""
+      val lastUpdatedOn = if(null != response.lastUpdatedOn) response.lastUpdatedOn.substring(0,10) else ""
+      val textbookDf = ETBTextbookData(response.channel,response.identifier,response.name,medium,gradeLevel,subject,response.status,createdOn,lastUpdatedOn,response.leafNodesCount,qrLinkedContent,qrNotLinked,totalLeafNodes,leafNodeswithoutContent)
       textBookReport=textbookDf::textBookReport
     }
     textBookReport
