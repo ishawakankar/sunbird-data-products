@@ -16,8 +16,8 @@ case class ETBTextbookData(channel: String, identifier: String, name: String, me
 case class DCETextbookData(channel: String, identifier: String, name: String, medium: String, gradeLevel:String, subject: String,
                            createdOn: String, lastUpdatedOn: String, totalQRCodes: Int, contentLinkedQR: Int,
                            withoutContentQR: Int, withoutContentT1: Int, withoutContentT2: Int)
-//case class ContentInformation(id: String, ver: String, ts: String, params: Params, responseCode: String,result: TextbookResult)
-//case class TextbookResult(count: Int, content: List[TBContentResult])
+case class ContentInformation(id: String, ver: String, ts: String, params: Params, responseCode: String,result: TextbookResult)
+case class TextbookResult(count: Int, content: List[TBContentResult])
 
 object TBConstants {
   val textbookunit = "TextBookUnit"
@@ -186,32 +186,32 @@ var etbReport1=List[ETBTextbookData]()
     (qrLinkedContent,contentNotLinked,leafNodeswithoutContent,totalLeafNodes)
   }
 
-//    def getContentDataList(tenantId: String, unirest: UnirestClient)(implicit sc: SparkContext): TextbookResult = {
-//    implicit val sqlContext = new SQLContext(sc)
-//    val url = Constants.COMPOSITE_SEARCH_URL
-//    val request = s"""{
-//                     |      "request": {
-//                     |        "filters": {
-//                     |           "status": ["Live","Draft","Review","Unlisted"],
-//                     |          "contentType": ["Resource"],
-//                     |          "createdFor": "$tenantId"
-//                     |        },
-//                     |        "fields": ["channel","identifier","board","gradeLevel",
-//                     |          "medium","subject","status","creator","lastPublishedOn","createdFor",
-//                     |          "createdOn","pkgVersion","contentType",
-//                     |          "mimeType","resourceType", "lastSubmittedOn"
-//                     |        ],
-//                     |        "limit": 10000,
-//                     |        "facets": [
-//                     |          "status"
-//                     |        ]
-//                     |      }
-//                     |    }""".stripMargin
-//    val header = new util.HashMap[String, String]()
-//    header.put("Content-Type", "application/json")
-//    val response = unirest.post(url, request, Option(header))
-//    JSONUtils.deserialize[ContentInformation](response).result
-//  }
+    def getContentDataList(tenantId: String, unirest: UnirestClient)(implicit sc: SparkContext): TextbookResult = {
+    implicit val sqlContext = new SQLContext(sc)
+    val url = Constants.COMPOSITE_SEARCH_URL
+    val request = s"""{
+                     |      "request": {
+                     |        "filters": {
+                     |           "status": ["Live","Draft","Review","Unlisted"],
+                     |          "contentType": ["Resource"],
+                     |          "createdFor": "$tenantId"
+                     |        },
+                     |        "fields": ["channel","identifier","board","gradeLevel",
+                     |          "medium","subject","status","creator","lastPublishedOn","createdFor",
+                     |          "createdOn","pkgVersion","contentType",
+                     |          "mimeType","resourceType", "lastSubmittedOn"
+                     |        ],
+                     |        "limit": 10000,
+                     |        "facets": [
+                     |          "status"
+                     |        ]
+                     |      }
+                     |    }""".stripMargin
+    val header = new util.HashMap[String, String]()
+    header.put("Content-Type", "application/json")
+    val response = unirest.post(url, request, Option(header))
+    JSONUtils.deserialize[ContentInformation](response).result
+  }
 
   def getString(data: Object): String = {
     if (null != data) {
