@@ -33,20 +33,36 @@ object TextBookUtils {
   }
 
   def getTextbookHierarchy(textbookInfo: List[TextBookInfo],tenantInfo: RDD[TenantInfo],restUtil: HTTPClient)(implicit sc: SparkContext): (RDD[FinalOutput]) = {
-    val reportTuple = for {textbook <- sc.parallelize(textbookInfo)
-      baseUrl = s"${AppConf.getConfig("hierarchy.search.api.url")}${AppConf.getConfig("hierarchy.search.api.path")}${textbook.identifier}"
-      finalUrl = if("Live".equals(textbook.status)) baseUrl else s"$baseUrl?mode=edit"
-      response = RestUtil.get[ContentDetails](finalUrl)
-      tupleData = if(null != response && "successful".equals(response.params.status)) {
-      val data = response.result.content
+//    val reportTuple = for {textbook <- sc.parallelize(textbookInfo)
+//      baseUrl = s"${AppConf.getConfig("hierarchy.search.api.url")}${AppConf.getConfig("hierarchy.search.api.path")}${textbook.identifier}"
+//      finalUrl = if("Live".equals(textbook.status)) baseUrl else s"$baseUrl?mode=edit"
+//      response = RestUtil.get[ContentDetails](finalUrl)
+//      tupleData = if(null != response && "successful".equals(response.params.status)) {
+//      val data = response.result.content
+//        val etbReport = generateETBTextbookReport(data)
+//        val dceReport = generateDCETextbookReport(data)
+//        (etbReport, dceReport)
+//       }
+//       else (List(),List())
+//    } yield tupleData
+var etbReport1=List[ETBTextbookData]()
+    var dceReport1=List[DCETextbookData]()
+    sc.parallelize(textbookInfo).map(textbook=>{
+      val baseUrl = s"${AppConf.getConfig("hierarchy.search.api.url")}${AppConf.getConfig("hierarchy.search.api.path")}${textbook.identifier}"
+      val finalUrl = if("Live".equals(textbook.status)) baseUrl else s"$baseUrl?mode=edit"
+      val response = RestUtil.get[ContentDetails](finalUrl)
+      println(textbook.identifier)
+      if(null != response && "successful".equals(response.params.status)) {
+        val data = response.result.content
         val etbReport = generateETBTextbookReport(data)
+        etbReport1=etbReport1::etbReport
         val dceReport = generateDCETextbookReport(data)
-        (etbReport, dceReport)
-       }
-       else (List(),List())
-    } yield tupleData
-    val etbTextBookReport = reportTuple.filter(f => f._1.nonEmpty).map(f => f._1.head)
-    val dceTextBookReport = reportTuple.filter(f => f._2.nonEmpty).map(f => f._2.head)
+        dceReport1=dceReport1::dceReport
+      }
+    })
+
+    val etbTextBookReport = sc.parallelize(etbReport1)
+    val dceTextBookReport = sc.parallelize(dceReport1)
     generateTextBookReport(etbTextBookReport, dceTextBookReport, tenantInfo)
   }
 
