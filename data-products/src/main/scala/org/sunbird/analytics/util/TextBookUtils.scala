@@ -55,9 +55,9 @@ var etbReport1=List[ETBTextbookData]()
       if(null != response && "successful".equals(response.params.status)) {
         val data = response.result.content
         val etbReport = generateETBTextbookReport(data)
-        etbReport1=etbReport1::etbReport
+        etbReport1=etbReport++etbReport1
         val dceReport = generateDCETextbookReport(data)
-        dceReport1=dceReport1::dceReport
+        dceReport1=dceReport++dceReport1
       }
     })
 
