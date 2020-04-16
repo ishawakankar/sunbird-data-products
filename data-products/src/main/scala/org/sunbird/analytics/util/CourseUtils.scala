@@ -90,6 +90,7 @@ object CourseUtils {
     } else {
       data.saveToBlobStore(storageConfig, format, reportId, Option(Map("header" -> "true")), None)
     }
+    println("merge config ",mergeConfig)
     if(mergeConfig.nonEmpty) {
       val mergeConf = mergeConfig.get
       println(mergeConf)

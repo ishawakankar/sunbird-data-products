@@ -69,9 +69,9 @@ object TextBookUtils {
     val scans = dialcodeScans.map(f => f.head)
     val dialcodeReport = dcereport ++ etbreport
 
-//    generateWeeklyScanReport(config, scans)
-    val dscans = List(WeeklyDialCodeScans("2020-01-20","T2I6C9",9.0,"dialcode_scans","dialcode_counts"))
-    generateWeeklyScanReport(config,scans)
+    generateWeeklyScanReport(config, scans)
+//    val dscans = List(WeeklyDialCodeScans("2020-01-20","T2I6C9",9.0,"dialcode_scans","dialcode_counts"))
+//    generateWeeklyScanReport(config,dscans)
     generateTextBookReport(sc.parallelize(etbTextBookReport), sc.parallelize(dceTextBookReport), sc.parallelize(dialcodeReport), tenantInfo)
   }
 
@@ -80,11 +80,14 @@ object TextBookUtils {
     import sqlContext.implicits._
 
     val configMap = config("dialcodeReportConfig").asInstanceOf[Map[String, AnyRef]]
+    println("configMap",configMap)
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
+    println("reportConfig",reportConfig)
     val scansDf = sc.parallelize(dialcodeScans).toDF()
-    scansDf.show(false)
+//    scansDf.show(false)
 println("sending scans to blob")
     reportConfig.output.map { f =>
+      println("f",f)
       CourseUtils.postDataToBlob(scansDf,f,config)
     }
   }
