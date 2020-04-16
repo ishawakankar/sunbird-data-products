@@ -191,6 +191,7 @@ object TextBookUtils {
           val textbookInfo = getTextBookInfo(textbook)
           val levelNames = textbookInfo._1
           val dialcodes = textbookInfo._2.lift(0).getOrElse("")
+          println(response.identifier)
           dialcode = dialcodes
           val report = DialcodeExceptionData(response.channel, response.identifier, getString(response.medium), getString(response.gradeLevel),getString(response.subject), response.name, l1,levelNames.lift(0).getOrElse(""),levelNames.lift(1).getOrElse(""),levelNames.lift(2).getOrElse(""),levelNames.lift(3).getOrElse(""),dialcodes,"","",0,0,term,"DCE_dialcode_data")
           dceDialcode = report :: dceDialcode
