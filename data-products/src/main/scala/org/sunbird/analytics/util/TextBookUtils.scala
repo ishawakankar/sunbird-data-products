@@ -69,9 +69,9 @@ object TextBookUtils {
     val scans = dialcodeScans.map(f => f.head)
     val dialcodeReport = dcereport ++ etbreport
 
-    generateWeeklyScanReport(config, scans)
-//    val dscans = List(WeeklyDialCodeScans("2020-01-20","T2I6C9",9.0,"dialcode_scans","dialcode_counts"))
-//    generateWeeklyScanReport(config,dscans)
+//    generateWeeklyScanReport(config, scans)
+    val dscans = List(WeeklyDialCodeScans("2020-01-20","T2I6C9",9.0,"dialcode_scans","dialcode_counts"))
+    generateWeeklyScanReport(config,dscans)
     generateTextBookReport(sc.parallelize(etbTextBookReport), sc.parallelize(dceTextBookReport), sc.parallelize(dialcodeReport), tenantInfo)
   }
 
