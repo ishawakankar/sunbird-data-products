@@ -66,7 +66,7 @@ object TextBookUtils {
     val etbDialCodeReport = reportTuple.map(f => f._4).filter(f => f.nonEmpty)
     val etbreport = if(etbDialCodeReport.nonEmpty) etbDialCodeReport.head else List()
     val dialcodeScans = reportTuple.map(f => f._5).filter(f=>f.nonEmpty) ++ reportTuple.map(f => f._6).filter(f=>f.nonEmpty)
-    val scans = if(dialcodeScans.nonEmpty) dialcodeScans.head else List()
+    val scans = dialcodeScans.map(f => f.head)
     val dialcodeReport = dcereport ++ etbreport
 
     generateWeeklyScanReport(config, scans)
@@ -132,7 +132,7 @@ object TextBookUtils {
     var weeklyDialcodes = List[WeeklyDialCodeScans]()
     val report = DialcodeExceptionData(response.channel,response.identifier,getString(response.medium),getString(response.gradeLevel),getString(response.subject),response.name,"","","","","","",response.status,"",response.leafNodesCount,0,"","ETB_dialcode_data")
     if(null != response && response.children.isDefined) {
-      println("parseETBDialcode",response.identifier)
+//      println("parseETBDialcode",response.identifier)
       val report = parseETBDialcode(response.children.get, response, List[ContentInfo]())
         dialcodeReport = (report._1 ++ dialcodeReport).reverse
         if(report._2.nonEmpty) { weeklyDialcodes = weeklyDialcodes ++ report._2 }
@@ -173,7 +173,7 @@ object TextBookUtils {
       response.children.get.map(chapters => {
         val term = if(index<=lengthOfChapters/2) "T1"  else "T2"
         index = index+1
-        println("parseDCEDialcode",response.identifier)
+//        println("parseDCEDialcode",response.identifier)
         val report = parseDCEDialcode(chapters.children.getOrElse(List[ContentInfo]()),response,term,chapters.name,List[ContentInfo]())
         dialcodeReport = (report._1 ++ dialcodeReport).reverse
         if(report._2.nonEmpty) { weeklyDialcodes = weeklyDialcodes ++ report._2 }
