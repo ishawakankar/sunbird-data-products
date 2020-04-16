@@ -69,7 +69,9 @@ object TextBookUtils {
     val scans = dialcodeScans.map(f => f.head)
     val dialcodeReport = dcereport ++ etbreport
 
-    generateWeeklyScanReport(config, scans)
+//    generateWeeklyScanReport(config, scans)
+    val dscans = List(WeeklyDialCodeScans("2020-01-20","T2I6C9",9.0,"dialcode_scans","dialcode_counts"))
+    generateWeeklyScanReport(config,scans)
     generateTextBookReport(sc.parallelize(etbTextBookReport), sc.parallelize(dceTextBookReport), sc.parallelize(dialcodeReport), tenantInfo)
   }
 
@@ -81,7 +83,7 @@ object TextBookUtils {
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
     val scansDf = sc.parallelize(dialcodeScans).toDF()
     scansDf.show(false)
-
+println("sending scans to blob")
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(scansDf,f,config)
     }
@@ -207,7 +209,7 @@ object TextBookUtils {
 
   def getDialcodeScans(dialcode: String)(implicit sc: SparkContext, fc: FrameworkContext): List[WeeklyDialCodeScans] = {
     val result= if(dialcode.nonEmpty) {
-      println(dialcode)
+//      println(dialcode)
       val query = s"""{"queryType": "groupBy","dataSource": "telemetry-events","intervals": "2019-04-09T00:00:00+00:00/2020-04-16T00:00:00+00:00","aggregations": [{"name": "scans","type": "count"}],"dimensions": [{"fieldName": "object_id","aliasName": "dialcode"}],"filters": [{"type": "equals","dimension": "eid","value": "SEARCH"},{"type":"equals","dimension":"object_id","value":"$dialcode"},{"type":"in","dimension":"object_type","values":["DialCode","dialcode","qr","Qr"]}],"postAggregation": [],"descending": "false"}""".stripMargin
       val druidQuery = JSONUtils.deserialize[DruidQueryModel](query)
       val druidResponse = DruidDataFetcher.getDruidData(druidQuery)

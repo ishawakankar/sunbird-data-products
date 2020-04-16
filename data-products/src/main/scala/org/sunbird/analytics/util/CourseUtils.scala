@@ -92,6 +92,10 @@ object CourseUtils {
     }
     if(mergeConfig.nonEmpty) {
       val mergeConf = mergeConfig.get
+      println(mergeConf)
+      println()
+      println()
+      println()
       val reportPath = mergeConf.reportPath
       val fileList = getDeltaFileList(deltaFiles,reportId,reportPath,storageConfig)
       val mergeScriptConfig = MergeScriptConfig(reportId, mergeConf.frequency, mergeConf.basePath, mergeConf.rollup,

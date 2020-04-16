@@ -89,7 +89,7 @@ object ETBMetricsModel extends IBatchModelTemplate[Empty,Empty,FinalOutput,Final
       }).filter(textbook=> !textbook.identifier.isEmpty)
 
       val scansDF = getScanCounts(config)
-
+println("sending reports to blob")
       reportConfig.output.map { f =>
         val etbDf = etbTextBookReport.toDF()
         CourseUtils.postDataToBlob(etbDf,f,config)
