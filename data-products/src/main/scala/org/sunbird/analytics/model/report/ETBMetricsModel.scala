@@ -92,18 +92,18 @@ object ETBMetricsModel extends IBatchModelTemplate[Empty,Empty,FinalOutput,Final
 println("sending reports to blob")
       reportConfig.output.map { f =>
         val etbDf = etbTextBookReport.toDF()
-        CourseUtils.postDataToBlob(etbDf,f,config)
+//        CourseUtils.postDataToBlob(etbDf,f,config)
 
         val dceDf = dceTextBookReport.toDF()
 //        CourseUtils.postDataToBlob(dceDf,f,config)
 
         val dialdceDF = dceDialcodeReport.toDF()
         val dialcodeDCE= dialdceDF.join(scansDF,dialdceDF.col("dialcode")===scansDF.col("dialcodes"),"left_outer").drop("dialcodes","noOfScans","status","nodeType","noOfContent")
-//        CourseUtils.postDataToBlob(dialcodeDCE,f,config)
+        CourseUtils.postDataToBlob(dialcodeDCE,f,config)
 
         val dialetbDF = etbDialcodeReport.toDF()
         val dialcodeETB= dialetbDF.join(scansDF,dialetbDF.col("dialcode")===scansDF.col("dialcodes"),"left_outer").drop("dialcodes","noOfScans","term")
-//        CourseUtils.postDataToBlob(dialcodeETB,f,config)
+        CourseUtils.postDataToBlob(dialcodeETB,f,config)
       }
     }
     events
