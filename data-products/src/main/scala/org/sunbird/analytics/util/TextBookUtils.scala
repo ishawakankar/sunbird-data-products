@@ -80,6 +80,7 @@ object TextBookUtils {
     val configMap = config("dialcodeReportConfig").asInstanceOf[Map[String, AnyRef]]
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
     val scansDf = sc.parallelize(dialcodeScans).toDF()
+    scansDf.show(false)
 
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(scansDf,f,config)
@@ -131,6 +132,7 @@ object TextBookUtils {
     var weeklyDialcodes = List[WeeklyDialCodeScans]()
     val report = DialcodeExceptionData(response.channel,response.identifier,getString(response.medium),getString(response.gradeLevel),getString(response.subject),response.name,"","","","","","",response.status,"",response.leafNodesCount,0,"","ETB_dialcode_data")
     if(null != response && response.children.isDefined) {
+      println("parseETBDialcode",response.identifier)
       val report = parseETBDialcode(response.children.get, response, List[ContentInfo]())
         dialcodeReport = (report._1 ++ dialcodeReport).reverse
         if(report._2.nonEmpty) { weeklyDialcodes = weeklyDialcodes ++ report._2 }
@@ -171,6 +173,7 @@ object TextBookUtils {
       response.children.get.map(chapters => {
         val term = if(index<=lengthOfChapters/2) "T1"  else "T2"
         index = index+1
+        println("parseDCEDialcode",response.identifier)
         val report = parseDCEDialcode(chapters.children.getOrElse(List[ContentInfo]()),response,term,chapters.name,List[ContentInfo]())
         dialcodeReport = (report._1 ++ dialcodeReport).reverse
         if(report._2.nonEmpty) { weeklyDialcodes = weeklyDialcodes ++ report._2 }
@@ -191,7 +194,6 @@ object TextBookUtils {
           val textbookInfo = getTextBookInfo(textbook)
           val levelNames = textbookInfo._1
           val dialcodes = textbookInfo._2.lift(0).getOrElse("")
-          println(response.identifier)
           dialcode = dialcodes
           val report = DialcodeExceptionData(response.channel, response.identifier, getString(response.medium), getString(response.gradeLevel),getString(response.subject), response.name, l1,levelNames.lift(0).getOrElse(""),levelNames.lift(1).getOrElse(""),levelNames.lift(2).getOrElse(""),levelNames.lift(3).getOrElse(""),dialcodes,"","",0,0,term,"DCE_dialcode_data")
           dceDialcode = report :: dceDialcode
