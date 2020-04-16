@@ -87,11 +87,14 @@ object CourseUtils {
     val fileParameters = config.getOrElse("fileParameters", List("")).asInstanceOf[List[String]]
     val dims = config.getOrElse("folderPrefix", List()).asInstanceOf[List[String]]
     val mergeConfig = reportConfig.mergeConfig
+    println("dims",dims)
    val deltaFiles = if (dims.nonEmpty) {
+     println(dims,"dims in delta check")
       data.saveToBlobStore(storageConfig, format, reportId, Option(Map("header" -> "true")), Option(dims))
     } else {
       data.saveToBlobStore(storageConfig, format, reportId, Option(Map("header" -> "true")), None)
     }
+    println("delta files",deltaFiles)
     println("merge config ",mergeConfig)
     if(mergeConfig.nonEmpty) {
       val mergeConf = mergeConfig.get
@@ -101,8 +104,11 @@ object CourseUtils {
       println()
       val reportPath = mergeConf.reportPath
       val fileList = getDeltaFileList(deltaFiles,reportId,reportPath,storageConfig)
+      println(fileList,"filelist")
       val mergeScriptConfig = MergeScriptConfig(reportId, mergeConf.frequency, mergeConf.basePath, mergeConf.rollup,
         mergeConf.rollupAge, mergeConf.rollupCol, mergeConf.rollupRange, MergeFiles(fileList, List("Date")))
+      println("_______________________________________________________")
+      println("final config",mergeScriptConfig)
       mergeReport(mergeScriptConfig)
     } else {
       JobLogger.log(s"Merge report is not configured, hence skipping that step", None, INFO)
