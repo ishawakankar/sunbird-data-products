@@ -80,15 +80,11 @@ object TextBookUtils {
     import sqlContext.implicits._
 
     val configMap = config("dialcodeReportConfig").asInstanceOf[Map[String, AnyRef]]
-    println("configMap",configMap)
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
-    println("reportConfig",reportConfig)
+    val testconf = Map("reportConfig"-> configMap,"store"->config("store"))
     val scansDf = sc.parallelize(dialcodeScans).toDF()
-//    scansDf.show(false)
-println("sending scans to blob")
     reportConfig.output.map { f =>
-      println("f",f)
-      CourseUtils.postDataToBlob(scansDf,f,config)
+      CourseUtils.postDataToBlob(scansDf,f,testconf)
     }
   }
 
