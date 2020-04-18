@@ -37,6 +37,7 @@ object TextBookUtils {
 
   def getTextBooks(config: Map[String, AnyRef], restUtil: HTTPClient): List[TextBookInfo] = {
     val apiURL = Constants.COMPOSITE_SEARCH_URL
+    println("getting textbooks",apiURL)
     val request = JSONUtils.serialize(config.get("esConfig").get)
     val response = restUtil.post[TextBookDetails](apiURL, request)
     if(null != response && "successful".equals(response.params.status) && response.result.count>0) response.result.content else List()
@@ -70,8 +71,8 @@ object TextBookUtils {
     val dialcodeReport = dcereport ++ etbreport
 
 //    generateWeeklyScanReport(config, scans)
-    val dscans = List(WeeklyDialCodeScans("2020-01-20","DGHEDHH",1.0,"dialcode_scans","dialcode_counts"),WeeklyDialCodeScans("date","T2I6C9",2.0,"dialcode_scans","dialcode_counts"))
-    generateWeeklyScanReport(config,dscans)
+    val dscans = List(WeeklyDialCodeScans("2020-01-20","DGHEDHH",1.0,"dialcode_scans","dialcode_counts"),WeeklyDialCodeScans("2020-01-24","T2I6C9",2.0,"dialcode_scans","dialcode_counts"))
+    generateWeeklyScanReport(config,dscans++scans)
     generateTextBookReport(sc.parallelize(etbTextBookReport), sc.parallelize(dceTextBookReport), sc.parallelize(dialcodeReport), tenantInfo)
   }
 
