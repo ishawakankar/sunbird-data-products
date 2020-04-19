@@ -40,6 +40,8 @@ object TextBookUtils {
     println("getting textbooks",apiURL)
     val request = JSONUtils.serialize(config.get("esConfig").get)
     val response = restUtil.post[TextBookDetails](apiURL, request)
+    println("textbook composite search result")
+    println(response)
     if(null != response && "successful".equals(response.params.status) && response.result.count>0) response.result.content else List()
   }
 
