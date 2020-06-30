@@ -166,7 +166,7 @@ object CourseMetricsJob extends optional.Application with IJob with ReportGenera
                      |		"sort_by": {
                      |			"createdOn": "desc"
                      |		},
-                     |		"limit": 10,
+                     |		"limit": 10000,
                      |		"fields": ["framework", "identifier", "name", "channel", "batches"]
                      |	}
                      |}""".stripMargin
