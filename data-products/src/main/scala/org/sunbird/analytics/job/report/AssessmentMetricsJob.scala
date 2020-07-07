@@ -222,8 +222,7 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
          |{
          |                "request": {
          |                    "filters": {
-         |                        "identifier": $contentList,
-         |                        "contentType":  "$contentType"
+         |                        "identifier": $contentList
          |                    },
          |                    "sort_by": {"createdOn":"desc"},
          |                    "limit": 10000,
