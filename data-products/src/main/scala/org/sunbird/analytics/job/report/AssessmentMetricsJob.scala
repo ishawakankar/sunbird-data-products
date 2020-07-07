@@ -127,10 +127,11 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
     val userCourseDenormDF = courseChannelDenormDF.join(userCoursesDF, userCoursesDF.col("batchid") === courseChannelDenormDF.col("batchid"), "inner")
       .select(
         userCoursesDF.col("batchid"),
-        col("userid"),
+        col("userid").as("user_id"),
         col("active"),
         courseChannelDenormDF.col("courseid"),
         courseChannelDenormDF.col("channel").as("course_channel"))
+    userCourseDenormDF.show(false)
     /*
   *userCourseDenormDF lacks some of the user information that need to be part of the report
   *here, it will add some more user details
@@ -148,7 +149,7 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
       .withColumn("username",concat_ws(" ", col("firstname"), col("lastname")))
     usDf.show(false)
 
-    val userDenormDF = userCourseDenormDF.withColumnRenamed("userid","user_id")
+    val userDenormDF = userCourseDenormDF
       .join(usDf, usDf.col("userid") === userCourseDenormDF.col("user_id"), "inner")
       .select(
         userCourseDenormDF.col("courseid"),
