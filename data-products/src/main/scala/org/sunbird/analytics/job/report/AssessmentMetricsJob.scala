@@ -131,7 +131,7 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
         col("active"),
         courseChannelDenormDF.col("courseid"),
         courseChannelDenormDF.col("channel").as("course_channel"))
-    userCourseDenormDF.show(false)
+//    userCourseDenormDF.show(false)
     /*
   *userCourseDenormDF lacks some of the user information that need to be part of the report
   *here, it will add some more user details
@@ -147,7 +147,7 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
       .withColumn("statename",lit("KA"))
       .withColumn("orgname",lit("TestOrg"))
       .withColumn("username",concat_ws(" ", col("firstname"), col("lastname")))
-    usDf.show(false)
+//    usDf.show(false)
 
 //    val op=userCourseDenormDF.select(col("userid").as("user_id"),
 //      col("courseid"),
@@ -219,31 +219,23 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
 
     val request =
       s"""
-         {
-         | "_source": {
-         |   "includes": [
-         |     "name"
-         |   ]
-         | },
-         | "query": {
-         |   "bool": {
-         |     "must": [
-         |       {
-         |         "terms": {
-         |           "identifier.raw": $contentList
-         |         }
-         |       },
-         |       { "match": { "contentType":  "$contentType" }}
-         |     ]
-         |   }
-         | }
-         |}
+         |{
+         |                "request": {
+         |                    "filters": {
+         |                        "identifier": $contentList,
+         |                        "contentType":  "$contentType"
+         |                    },
+         |                    "sort_by": {"createdOn":"desc"},
+         |                    "limit": 10000,
+         |                    "fields": ["name", "identifier"]
+         |                }
+         |            }
        """.stripMargin
     val response = RestUtil.post[CourseResponse](apiUrl,request)
     val assessmentInfo = if (null != response && response.responseCode.equalsIgnoreCase("ok")) {
       response.result.content
     } else List()
-
+    assessmentInfo.toDF().select("name","identifier").show(false)
     assessmentInfo.toDF().select("name","identifier")
   }
 
