@@ -149,19 +149,22 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
       .withColumn("username",concat_ws(" ", col("firstname"), col("lastname")))
     usDf.show(false)
 
-    val op=userCourseDenormDF.select(col("userid").as("user_id"),
-      col("courseid"),
-      col("batchid"),
-      col("active"),
-      col("course_channel"))
+//    val op=userCourseDenormDF.select(col("userid").as("user_id"),
+//      col("courseid"),
+//      col("batchid"),
+//      col("active"),
+//      col("course_channel"))
 
-    val userDenormDF = op
-      .join(usDf, usDf.col("userid") === op.col("user_id"), "inner")
+//    op.show(false)
+//    usDf.show(false)
+
+    val userDenormDF = userCourseDenormDF
+      .join(usDf, usDf.col("userid") === userCourseDenormDF.col("userid"), "inner")
       .select(
-        op.col("courseid"),
-        op.col("batchid"),
-        op.col("active"),
-        op.col("course_channel"),
+        userCourseDenormDF.col("courseid"),
+        userCourseDenormDF.col("batchid"),
+        userCourseDenormDF.col("active"),
+        userCourseDenormDF.col("course_channel"),
         usDf.col("*"))
 
     val assessmentDF = getAssessmentData(assessmentProfileDF)
@@ -177,10 +180,10 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
       * Filter only valid enrolled userid for the specific courseid
       */
 
-    val reportDF = userDenormDF.join(resDF,
-      userDenormDF.col("userid") === resDF.col("user_id")
-        && userDenormDF.col("batchid") === resDF.col("batch_id")
-        && userDenormDF.col("courseid") === resDF.col("course_id"), "inner")
+    val reportDF = usDf.join(resDF,
+      usDf.col("userid") === resDF.col("user_id")
+        && usDf.col("batchid") === resDF.col("batch_id")
+        && usDf.col("courseid") === resDF.col("course_id"), "inner")
         .select("batchid", "courseid", "userid", "maskedemail", "maskedphone", "username", "districtname",
           "externalid", "schoolname", "schooludisecode", "statename", "orgname",
         "content_id", "total_score", "grand_total", "total_sum_score")
