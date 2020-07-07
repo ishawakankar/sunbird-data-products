@@ -18,7 +18,7 @@ case class DruidOutput(identifier: String, channel: String)
 case class CourseInfo(courseid: String, batchid: String, startdate: String, enddate: String, channel: String)
 case class CourseBatchOutput(courseid: String, batchid: String, startdate: String, enddate: String)
 
-object AssessmentMetricsJob extends optional.Application with IJob with BaseReportsJob {
+object AssessmentMetricsJob extends optional.Application with IjobMetrics with BaseReportsJob {
 
   implicit val className = "org.ekstep.analytics.job.AssessmentMetricsJob"
 

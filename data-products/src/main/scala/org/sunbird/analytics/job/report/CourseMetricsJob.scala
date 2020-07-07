@@ -28,7 +28,7 @@ trait ReportGenerator {
   def prepareReport(spark: SparkSession, storageConfig: StorageConfig, fetchTable: (SparkSession, Map[String, String], String) => DataFrame, config: JobConfig)(implicit fc: FrameworkContext): Unit
 }
 
-object CourseMetricsJob extends optional.Application with IJob with ReportGenerator with BaseReportsJob {
+object CourseMetricsJob extends optional.Application with IjobMetrics with ReportGenerator with BaseReportsJob {
 
   implicit val className: String = "org.ekstep.analytics.job.CourseMetricsJob"
   val sunbirdKeyspace: String = AppConf.getConfig("course.metrics.cassandra.sunbirdKeyspace")
