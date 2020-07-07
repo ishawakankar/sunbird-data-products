@@ -148,8 +148,8 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
       .withColumn("username",concat_ws(" ", col("firstname"), col("lastname")))
     usDf.show(false)
 
-    val userDenormDF = userCourseDenormDF
-      .join(usDf, usDf.col("userid") === userCourseDenormDF.col("userid"), "inner")
+    val userDenormDF = userCourseDenormDF.withColumnRenamed("userid","user_id")
+      .join(usDf, usDf.col("userid") === userCourseDenormDF.col("user_id"), "inner")
       .select(
         userCourseDenormDF.col("courseid"),
         userCourseDenormDF.col("batchid"),
