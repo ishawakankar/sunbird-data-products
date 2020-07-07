@@ -127,7 +127,7 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
     val userCourseDenormDF = courseChannelDenormDF.join(userCoursesDF, userCoursesDF.col("batchid") === courseChannelDenormDF.col("batchid"), "inner")
       .select(
         userCoursesDF.col("batchid"),
-        col("userid").as("user_id"),
+        col("userid"),
         col("active"),
         courseChannelDenormDF.col("courseid"),
         courseChannelDenormDF.col("channel").as("course_channel"))
@@ -149,13 +149,19 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
       .withColumn("username",concat_ws(" ", col("firstname"), col("lastname")))
     usDf.show(false)
 
-    val userDenormDF = userCourseDenormDF
-      .join(usDf, usDf.col("userid") === userCourseDenormDF.col("user_id"), "inner")
+    val op=userCourseDenormDF.select(col("userid").as("user_id"),
+      col("courseid"),
+      col("batchid"),
+      col("active"),
+      col("course_channel"))
+
+    val userDenormDF = op
+      .join(usDf, usDf.col("userid") === op.col("user_id"), "inner")
       .select(
-        userCourseDenormDF.col("courseid"),
-        userCourseDenormDF.col("batchid"),
-        userCourseDenormDF.col("active"),
-        userCourseDenormDF.col("course_channel"),
+        op.col("courseid"),
+        op.col("batchid"),
+        op.col("active"),
+        op.col("course_channel"),
         usDf.col("*"))
 
     val assessmentDF = getAssessmentData(assessmentProfileDF)
