@@ -135,15 +135,27 @@ object AssessmentMetricsJob extends optional.Application with IJob with BaseRepo
   *userCourseDenormDF lacks some of the user information that need to be part of the report
   *here, it will add some more user details
   * */
+    val usDf = userCourseDenormDF.withColumn("firstname",lit("TestUser"))
+      .withColumn("lastname",lit("Name"))
+      .withColumn("maskedemail",lit("**@gmail.com"))
+      .withColumn("maskedphone",lit("***"))
+      .withColumn("districtname",lit("LL"))
+      .withColumn("externalid",lit("087654345678"))
+      .withColumn("schoolname",lit("School-x"))
+      .withColumn("schooludisecode",lit("20"))
+      .withColumn("statename",lit("KA"))
+      .withColumn("orgname",lit("TestOrg"))
+      .withColumn("username",concat_ws(" ", col("firstname"), col("lastname")))
+    usDf.show(false)
 
     val userDenormDF = userCourseDenormDF
-      .join(userDF, userDF.col("userid") === userCourseDenormDF.col("userid"), "inner")
+      .join(usDf, usDf.col("userid") === userCourseDenormDF.col("userid"), "inner")
       .select(
         userCourseDenormDF.col("courseid"),
         userCourseDenormDF.col("batchid"),
         userCourseDenormDF.col("active"),
         userCourseDenormDF.col("course_channel"),
-        userDF.col("*"))
+        usDf.col("*"))
 
     val assessmentDF = getAssessmentData(assessmentProfileDF)
     /**
