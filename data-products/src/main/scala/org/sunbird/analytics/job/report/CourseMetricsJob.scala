@@ -37,13 +37,14 @@ object CourseMetricsJob extends optional.Application with IjobMetrics with Repor
 
   def name(): String = "CourseMetricsJob"
 
-  def main(config: List[String])(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None) {
+  def main(config: String, batchId: String)(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None) {
     JobLogger.init("CourseMetricsJob")
     JobLogger.start("CourseMetrics Job Started executing", Option(Map("config" -> config, "model" -> name)))
     println("config", config)
-    println(config(0))
+    println(batchId)
     JobLogger.log("config: "+config)
-    val jobConfig = JSONUtils.deserialize[JobConfig](config(0))
+    JobLogger.log("batchId: "+batchId)
+    val jobConfig = JSONUtils.deserialize[JobConfig](config)
     JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
 
     implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)

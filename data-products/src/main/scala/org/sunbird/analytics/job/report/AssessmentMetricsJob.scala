@@ -18,7 +18,7 @@ case class DruidOutput(identifier: String, channel: String)
 case class CourseInfo(courseid: String, batchid: String, startdate: String, enddate: String, channel: String)
 case class CourseBatchOutput(courseid: String, batchid: String, startdate: String, enddate: String)
 
-object AssessmentMetricsJob extends optional.Application with IjobMetrics with BaseReportsJob {
+object AssessmentMetricsJob extends optional.Application with IJob with BaseReportsJob {
 
   implicit val className = "org.ekstep.analytics.job.AssessmentMetricsJob"
 
@@ -28,12 +28,12 @@ object AssessmentMetricsJob extends optional.Application with IjobMetrics with B
 
   def name(): String = "AssessmentMetricsJob"
 
-  def main(config: List[String])(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None) {
+  def main(config: String)(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None) {
 
 
     JobLogger.init("Assessment Metrics")
     JobLogger.start("Assessment Job Started executing", Option(Map("config" -> config, "model" -> name)))
-    val jobConfig = JSONUtils.deserialize[JobConfig](config(0))
+    val jobConfig = JSONUtils.deserialize[JobConfig](config)
     JobContext.parallelization = CommonUtil.getParallelization(jobConfig);
     implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig);
     implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext();
