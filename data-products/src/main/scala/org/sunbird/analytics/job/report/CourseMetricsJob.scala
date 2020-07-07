@@ -44,12 +44,12 @@ object CourseMetricsJob extends optional.Application with IjobMetrics with Repor
     println(batchId)
     JobLogger.log("config: "+config)
     JobLogger.log("batchId: "+batchId)
-    val jobConfig = JSONUtils.deserialize[JobConfig](config)
-    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
-
-    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
-    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
-    execute(jobConfig)
+//    val jobConfig = JSONUtils.deserialize[JobConfig](config)
+//    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
+//
+//    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
+//    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
+//    execute(jobConfig)
   }
 
   private def execute(config: JobConfig)(implicit sc: SparkContext, fc: FrameworkContext) = {
