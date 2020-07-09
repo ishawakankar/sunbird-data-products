@@ -121,7 +121,7 @@ class TestCourseMetricsJobV2 extends BaseReportSpec with MockFactory with BaseRe
     (mockDruidClient.doQuery(_: DruidQuery)(_: DruidConfig)).expects(*, mockDruidConfig).returns(Future(druidResponse)).anyNumberOfTimes()
     (mockFc.getDruidClient _).expects().returns(mockDruidClient).anyNumberOfTimes()
 
-    CourseMetricsJobV2.prepareReport(spark, storageConfig, reporterMock.loadData,config)
+    CourseMetricsJobV2.prepareReport(spark, storageConfig, reporterMock.loadData,config, List())
 
     implicit val batchReportEncoder: Encoder[BatchReportOutput] = Encoders.product[BatchReportOutput]
     val batch1 = "01303150537737011211"
@@ -186,6 +186,40 @@ class TestCourseMetricsJobV2 extends BaseReportSpec with MockFactory with BaseRe
     val conf = openSparkSession(JSONUtils.deserialize[JobConfig](strConfig))
     conf.sparkContext.stop()
     spark = getSparkSession()
+  }
+
+
+  it should "run" in {
+    implicit val fc = mock[FrameworkContext]
+    implicit val sc = spark
+
+    val config = """{"search": {"type": "none"},"model": "org.ekstep.analytics.job.AssessmentMetricsJobV2","modelParams": {"batchFilters": ["TPD"],"fromDate": "$(date --date yesterday +%Y-%m-%d)","toDate": "$(date --date yesterday +%Y-%m-%d)","sparkCassandraConnectionHost": "11.2.3.63","sparkElasticsearchConnectionHost": "11.2.3.58","sparkRedisConnectionHost": "11.2.4.22","sparkUserDbRedisIndex": "4"},"output": [{"to": "console","params": {"printEvent": false}}],"parallelization": 8,"appName": "Assessment Dashboard Metrics","deviceMapping": false}""".stripMargin
+
+    val extraction = config.split(";")
+    val strConfig = extraction(0)
+    println(strConfig)
+
+    if(extraction.length > 1) {
+      println("present")
+      val batchIds = extraction(1)
+      println(batchIds)
+    } else { println("absent") }
+
+
+
+//    val batchList = batchIds.split(",").toList
+////    batchList.foreach(element => println("elements in list -->",element))
+//
+//    (reporterMock.loadData _)
+//      .expects(spark, Map("table" -> "course_batch", "keyspace" -> sunbirdCoursesKeyspace), "org.apache.spark.sql.cassandra")
+//      .returning(courseBatchDF)
+//
+//    val batchesInput = List("09876543","0130271096968396800","abjhg","0130320389509939204")
+//
+//    val activeBatches = CourseMetricsJobV2.getActiveBatchesTest(reporterMock.loadData)
+//    println()
+//    activeBatches.foreach(row => println("active batch list",row))
+
   }
 
 }
