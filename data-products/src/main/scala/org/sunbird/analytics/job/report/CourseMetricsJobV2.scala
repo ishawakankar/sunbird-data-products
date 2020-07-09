@@ -21,7 +21,7 @@ trait ReportGeneratorV2 {
 
   def loadData(spark: SparkSession, settings: Map[String, String], url: String): DataFrame
 
-  def prepareReport(spark: SparkSession, storageConfig: StorageConfig, fetchTable: (SparkSession, Map[String, String], String) => DataFrame, config: JobConfig)(implicit fc: FrameworkContext): Unit
+  def prepareReport(spark: SparkSession, storageConfig: StorageConfig, fetchTable: (SparkSession, Map[String, String], String) => DataFrame, config: JobConfig, batchList: List[String])(implicit fc: FrameworkContext): Unit
 }
 
 object CourseMetricsJobV2 extends optional.Application with IJob with ReportGeneratorV2 with BaseReportsJob {
@@ -41,15 +41,20 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 
     println(config)
 
-//    val jobConfig = JSONUtils.deserialize[JobConfig](config)
-//    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
-//
-//    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
-//    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
-//    execute(jobConfig)
+    val conf = config.split(";")
+
+    val batchIds = if(conf.length > 1) {
+      conf(1).split(",").toList
+    } else List()
+
+    val jobConfig = JSONUtils.deserialize[JobConfig](conf(0))
+    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
+    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
+    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
+    execute(jobConfig, batchIds)
   }
 
-  private def execute(config: JobConfig)(implicit sc: SparkContext, fc: FrameworkContext) = {
+  private def execute(config: JobConfig, batchList: List[String])(implicit sc: SparkContext, fc: FrameworkContext) = {
     val tempDir = AppConf.getConfig("course.metrics.temp.dir")
     val readConsistencyLevel: String = AppConf.getConfig("course.metrics.cassandra.input.consistency")
     val sparkConf = sc.getConf
@@ -61,7 +66,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     val storageConfig = getStorageConfig(container, objectKey)
     val spark = SparkSession.builder.config(sparkConf).getOrCreate()
     val time = CommonUtil.time({
-      prepareReport(spark, storageConfig, loadData, config)
+      prepareReport(spark, storageConfig, loadData, config, batchList)
     })
     metrics.put("totalExecutionTime", time._1)
     JobLogger.end("CourseMetrics Job completed successfully!", "SUCCESS", Option(Map("config" -> config, "model" -> name, "metrics" -> metrics)))
@@ -73,14 +78,24 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     spark.read.format(url).options(settings).load()
   }
 
-  def getActiveBatches(loadData: (SparkSession, Map[String, String], String) => DataFrame)
+  def getActiveBatches(loadData: (SparkSession, Map[String, String], String) => DataFrame, batchList: List[String])
                       (implicit spark: SparkSession, fc: FrameworkContext): Array[Row] = {
 
     implicit  val sqlContext: SQLContext = spark.sqlContext
     import sqlContext.implicits._
 
-    val courseBatchDF = loadData(spark, Map("table" -> "course_batch", "keyspace" -> sunbirdCoursesKeyspace), "org.apache.spark.sql.cassandra")
-      .select("courseid", "batchid", "enddate", "startdate")
+    val courseBatchDF = if(batchList.nonEmpty) {
+      println("batchids found",batchList)
+      JobLogger.log("batchids found"+batchList)
+      loadData(spark, Map("table" -> "course_batch", "keyspace" -> sunbirdCoursesKeyspace), "org.apache.spark.sql.cassandra")
+        .filter(f => batchList.contains(f.getString(1)))
+        .select("courseid", "batchid", "enddate", "startdate")
+    }
+    else {
+      loadData(spark, Map("table" -> "course_batch", "keyspace" -> sunbirdCoursesKeyspace), "org.apache.spark.sql.cassandra")
+        .select("courseid", "batchid", "enddate", "startdate")
+    }
+    courseBatchDF.show(false)
 
     val fmt = DateTimeFormat.forPattern("yyyy-MM-dd")
     val comparisonDate = fmt.print(DateTime.now(DateTimeZone.UTC).minusDays(1))
@@ -102,10 +117,10 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     result
   }
 
-  def prepareReport(spark: SparkSession, storageConfig: StorageConfig, loadData: (SparkSession, Map[String, String], String) => DataFrame, config: JobConfig)(implicit fc: FrameworkContext): Unit = {
+  def prepareReport(spark: SparkSession, storageConfig: StorageConfig, loadData: (SparkSession, Map[String, String], String) => DataFrame, config: JobConfig, batchList: List[String])(implicit fc: FrameworkContext): Unit = {
 
     implicit val sparkSession: SparkSession = spark
-    val activeBatches = getActiveBatches(loadData)
+    val activeBatches = getActiveBatches(loadData, batchList)
     val userData = CommonUtil.time({
       recordTime(getUserData(spark, loadData), "Time taken to get generate the userData- ")
     })
