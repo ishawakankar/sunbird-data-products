@@ -31,11 +31,14 @@ object AssessmentMetricsJobV2 extends optional.Application with IJob with BaseRe
   def main(config: String)(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None) {
     JobLogger.init("Assessment Metrics")
     JobLogger.start("Assessment Job Started executing", Option(Map("config" -> config, "model" -> name)))
-    val jobConfig = JSONUtils.deserialize[JobConfig](config)
-    JobContext.parallelization = CommonUtil.getParallelization(jobConfig);
-    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig);
-    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext();
-    execute(jobConfig)
+
+    println(config)
+
+//    val jobConfig = JSONUtils.deserialize[JobConfig](config)
+//    JobContext.parallelization = CommonUtil.getParallelization(jobConfig);
+//    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig);
+//    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext();
+//    execute(jobConfig)
   }
 
   private def execute(config: JobConfig)(implicit sc: SparkContext, fc: FrameworkContext) = {

@@ -45,12 +45,16 @@ object CourseMetricsJob extends optional.Application with IJob with ReportGenera
 
     JobLogger.init("CourseMetricsJob")
     JobLogger.start("CourseMetrics Job Started executing", Option(Map("config" -> config, "model" -> name)))
-    val jobConfig = JSONUtils.deserialize[JobConfig](config)
-    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
+    println("from course metrics v1")
+    println(config)
 
-    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
-    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
-    execute(jobConfig)
+
+    //    val jobConfig = JSONUtils.deserialize[JobConfig](config)
+//    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
+//
+//    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
+//    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
+//    execute(jobConfig)
   }
 
   private def execute(config: JobConfig)(implicit sc: SparkContext, fc: FrameworkContext) = {
