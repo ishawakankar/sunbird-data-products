@@ -39,10 +39,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     JobLogger.init("CourseMetricsJob")
     JobLogger.start("CourseMetrics Job Started executing", Option(Map("config" -> config, "model" -> name)))
 
-    println(config)
-
     val conf = config.split(";")
-
     val batchIds = if(conf.length > 1) {
       conf(1).split(",").toList
     } else List()
@@ -88,7 +85,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
       println("batchids found",batchList)
       JobLogger.log("batchids found"+batchList)
       loadData(spark, Map("table" -> "course_batch", "keyspace" -> sunbirdCoursesKeyspace), "org.apache.spark.sql.cassandra")
-        .filter(f => batchList.contains(f.getString(1)))
+        .filter(batch => batchList.contains(batch.getString(1)))
         .select("courseid", "batchid", "enddate", "startdate")
     }
     else {

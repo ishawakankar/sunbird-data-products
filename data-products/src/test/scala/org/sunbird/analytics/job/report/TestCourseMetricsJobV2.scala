@@ -9,9 +9,10 @@ import ing.wbaa.druid.client.DruidClient
 import io.circe._
 import io.circe.parser._
 import org.apache.spark.sql.functions._
+
 import scala.collection.JavaConverters._
-import org.apache.spark.sql.types.{ArrayType, MapType, StringType}
-import org.apache.spark.sql.{DataFrame, Encoder, Encoders, SparkSession}
+import org.apache.spark.sql.types.{ArrayType, MapType, StringType, StructType}
+import org.apache.spark.sql.{DataFrame, Encoder, Encoders, SQLContext, SparkSession}
 import org.ekstep.analytics.framework.util.{HadoopFileUtil, JSONUtils}
 import org.ekstep.analytics.framework.{DruidQueryModel, FrameworkContext, JobConfig, StorageConfig}
 import org.scalamock.scalatest.MockFactory
