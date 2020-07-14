@@ -38,16 +38,22 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     JobLogger.init("CourseMetricsJob")
     JobLogger.start("CourseMetrics Job Started executing", Option(Map("config" -> config, "model" -> name)))
 
+    println(config)
+
     val conf = config.split(";")
     val batchIds = if(conf.length > 1) {
       conf(1).split(",").toList
     } else List()
-    val jobConfig = JSONUtils.deserialize[JobConfig](conf(0))
-    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
 
-    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
-    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
-    execute(jobConfig, batchIds)
+    println()
+    println(conf(0))
+    println(batchIds)
+//    val jobConfig = JSONUtils.deserialize[JobConfig](conf(0))
+//    JobContext.parallelization = CommonUtil.getParallelization(jobConfig)
+
+//    implicit val sparkContext: SparkContext = getReportingSparkContext(jobConfig)
+//    implicit val frameworkContext: FrameworkContext = getReportingFrameworkContext()
+//    execute(jobConfig, batchIds)
   }
 
   private def execute(config: JobConfig, batchList: List[String])(implicit sc: SparkContext, fc: FrameworkContext) = {
