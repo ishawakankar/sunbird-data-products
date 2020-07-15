@@ -112,6 +112,7 @@ object AssessmentMetricsJobV2 extends optional.Application with IJob with BaseRe
 
     val userDF = loadData(spark, Map("keys.pattern" -> "*","infer.schema" -> "true"), "org.apache.spark.sql.redis")
       .withColumn("username",concat_ws(" ", col("firstname"), col("lastname")))
+    userDF.show(200,false)
 
     val assessmentProfileDF = loadData(spark, Map("table" -> "assessment_aggregator", "keyspace" -> sunbirdCoursesKeyspace), cassandraUrl)
       .select("course_id", "batch_id", "user_id", "content_id", "total_max_score", "total_score", "grand_total")
