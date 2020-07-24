@@ -112,7 +112,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     val userAgg = loadData(spark, Map("table" -> "user_activity_agg", "keyspace" -> sunbirdCoursesKeyspace), "org.apache.spark.sql.cassandra")
       .select("user_id","activity_id","agg")
 
-    val hierarchyData = loadData(spark, Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore), "org.apache.spark.sql.cassandra")
+    val hierarchyData = loadData(spark, Map("table" -> "content_hierarchy", "keyspace" -> "dev_hierarchy_store"), "org.apache.spark.sql.cassandra")
       .select("identifier","hierarchy")
 
     val userCourseDf = userAgg.join(hierarchyData, userAgg.col("activity_id") === hierarchyData.col("identifier"), "inner")
