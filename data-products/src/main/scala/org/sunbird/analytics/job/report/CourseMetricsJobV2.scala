@@ -147,20 +147,23 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     metrics.put("userDFLoadTime", userData._1)
     metrics.put("activeBatchesCount", activeBatchesCount.get())
     val batchFilters = JSONUtils.serialize(config.modelParams.get("batchFilters"))
+var counter=0
 
     for (index <- activeBatches.indices) {
       val row = activeBatches(index)
       val courses = CourseUtils.getCourseInfo(spark, row.getString(0))
       if(courses.framework.nonEmpty && batchFilters.toLowerCase.contains(courses.framework.toLowerCase)) {
-        val batch = CourseBatch(row.getString(1), row.getString(2), row.getString(3), courses.channel);
-        val result = CommonUtil.time({
-          val reportDF = recordTime(getReportDF(batch, userData._2, userCourses, loadData), s"Time taken to generate DF for batch ${batch.batchid} - ")
-          val totalRecords = reportDF.count()
-          recordTime(saveReportToBlobStore(batch, reportDF, storageConfig, totalRecords), s"Time taken to save report in blobstore for batch ${batch.batchid} - ")
-          reportDF.unpersist(true)
-        })
-        JobLogger.log(s"Time taken to generate report for batch ${batch.batchid} is ${result._1}. Remaining batches - ${activeBatchesCount.getAndDecrement()}", None, INFO)
+        counter=counter+1
+//        val batch = CourseBatch(row.getString(1), row.getString(2), row.getString(3), courses.channel);
+//        val result = CommonUtil.time({
+//          val reportDF = recordTime(getReportDF(batch, userData._2, userCourses, loadData), s"Time taken to generate DF for batch ${batch.batchid} - ")
+//          val totalRecords = reportDF.count()
+//          recordTime(saveReportToBlobStore(batch, reportDF, storageConfig, totalRecords), s"Time taken to save report in blobstore for batch ${batch.batchid} - ")
+//          reportDF.unpersist(true)
+//        })
+//        JobLogger.log(s"Time taken to generate report for batch ${batch.batchid} is ${result._1}. Remaining batches - ${activeBatchesCount.getAndDecrement()}", None, INFO)
       }
+      JobLogger.log(s"Tpd active batches - $counter", None, INFO)
     }
     userData._2.unpersist(true)
 
