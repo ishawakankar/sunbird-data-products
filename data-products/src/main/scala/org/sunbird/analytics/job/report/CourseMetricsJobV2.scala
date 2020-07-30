@@ -125,6 +125,8 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     metrics.put("activeBatchesCount", activeBatchesCount.get())
     val batchFilters = JSONUtils.serialize(config.modelParams.get("batchFilters"))
     var counter = 0
+    var counter2 = 0
+    val activeB = activeBatchesCount.get()
 
     for (index <- activeBatches.indices) {
       val row = activeBatches(index)
@@ -140,9 +142,13 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         })
         JobLogger.log(s"Time taken to generate report for batch ${batch.batchid} is ${result._1}. Remaining batches - ${activeBatchesCount.getAndDecrement()}", None, INFO)
       }
+      else {
+        counter2=counter2+1
+        JobLogger.log(s"Batch not a tpd - ${activeBatchesCount.getAndDecrement()}", None, INFO)
+      }
     }
     println(counter,activeBatchesCount)
-    JobLogger.log(s"Total TPD batches - $counter, Active Batches - $activeBatchesCount", None, INFO)
+    JobLogger.log(s"Total TPD batches - $counter, Active Batches - $activeBatchesCount, also $activeB, other count is $counter2", None, INFO)
     userData._2.unpersist(true)
 
   }
