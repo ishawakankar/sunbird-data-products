@@ -5,7 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang.StringUtils
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{col, collect_set, concat_ws, explode_outer, first, lit, lower, _}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.sunbird.analytics.util.JSONUtils
 
 object UserCacheIndexer {
@@ -276,11 +276,11 @@ object UserCacheIndexer {
       val filteredDF = dataFrame.filter(col("userid").isNotNull)
       val fieldNames = filteredDF.schema.fieldNames
 
-      filteredDF.rdd.map(row => {
-        val fields = fieldNames.map(field => field -> row.getAs(field)).toMap
-        println(s"$from INSERTED " + fields.getOrElse(redisKeyProperty,""))
-        spark.sparkContext.toRedisHASH(spark.sparkContext.parallelize(filterData(fields.toSeq)), fields.getOrElse(redisKeyProperty, ""))
-      })
+      filteredDF.write
+        .format("org.apache.spark.sql.redis")
+        .option("key.column", "userId")
+        .mode(SaveMode.Append)
+        .save()
     }
 
     denormUserData()
