@@ -275,10 +275,11 @@ object UserCacheIndexer {
     def populateToRedis(dataFrame: DataFrame, from: String): Unit = {
       val filteredDF = dataFrame.filter(col("userid").isNotNull)
       val fieldNames = filteredDF.schema.fieldNames
-      val mappedData = filteredDF.rdd.map(row => fieldNames.map(field => field -> row.getAs(field)).toMap).collect().map(x => (x.getOrElse(redisKeyProperty, ""), x.toSeq))
-      mappedData.foreach(y => {
-        println(s"$from INSERTED " + y._1)
-        spark.sparkContext.toRedisHASH(spark.sparkContext.parallelize(filterData(y._2)), y._1)
+
+      filteredDF.rdd.map(row => {
+        val fields = fieldNames.map(field => field -> row.getAs(field)).toMap
+        println(s"$from INSERTED " + fields.getOrElse(redisKeyProperty,""))
+        spark.sparkContext.toRedisHASH(spark.sparkContext.parallelize(filterData(fields.toSeq)), fields.getOrElse(redisKeyProperty, ""))
       })
     }
 
