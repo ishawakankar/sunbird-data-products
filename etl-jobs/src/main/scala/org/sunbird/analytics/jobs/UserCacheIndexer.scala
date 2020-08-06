@@ -34,7 +34,7 @@ object UserCacheIndexer {
         .config("spark.redis.port", config.getString("redis.port"))
         .config("spark.redis.db", config.getString("redis.user.database.index"))
         .config("spark.redis.max.pipeline.size", config.getString("redis.max.pipeline.size"))
-        .config("spark.cassandra.read.timeoutMS", "300000")
+        .config("spark.cassandra.read.timeoutMS", "600000")
         .getOrCreate()
 
     def filterData(param: Seq[AnyRef]): Seq[(String, String)]
