@@ -278,8 +278,8 @@ object UserCacheIndexer {
 
       filteredDF.write
         .format("org.apache.spark.sql.redis")
-        .option("table", "people")
         .option("key.column", redisKeyProperty)
+        .option("keys.pattern", "*")
         .mode(SaveMode.Append)
         .save()
     }
