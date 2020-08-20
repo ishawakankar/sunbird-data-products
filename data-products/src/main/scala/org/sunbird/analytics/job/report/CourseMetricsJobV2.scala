@@ -175,6 +175,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 
     JobLogger.log(s"user courses length: ${testdf.count()}", None, INFO)
 
+
     val userData = CommonUtil.time({
       recordTime(getUserData(spark, loadData), "Time taken to get generate the userData- ")
     })
