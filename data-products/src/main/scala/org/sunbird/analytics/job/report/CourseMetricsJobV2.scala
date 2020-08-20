@@ -102,7 +102,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
       CourseData(courseInfo.lift(0).getOrElse(""), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
     }).toDF()
 
-    val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "inner")
+    val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "left")
       .withColumn("completionPercentage", (userAgg.col("completedCount")/hierarchyDf.col("leafNodesCount")*100).cast("int"))
       .select(userAgg.col("user_id").as("userid"),
         userAgg.col("context_id").as("contextid"),
@@ -111,7 +111,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         hierarchyDf.col("level1"),
         hierarchyDf.col("l1leafNodesCount"))
 
-    val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"outer")
+    val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"left")
       .withColumn("l1completionPercentage", (userAgg.col("completedCount")/dataDf.col("l1leafNodesCount")*100).cast("int"))
       .select(col("userid"),
         col("courseid"),
@@ -170,6 +170,11 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     } else activeBatches.collect
 
     val userCourses = getUserCourseInfo(loadData).persist(StorageLevel.MEMORY_ONLY)
+    val testdf = userCourses.where(col("contextid")==="cb:01308799953568563217"
+    && col("userid")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8").select(col("userid"))
+
+    JobLogger.log(s"user courses length: ${testdf.count()}", None, INFO)
+
     val userData = CommonUtil.time({
       recordTime(getUserData(spark, loadData), "Time taken to get generate the userData- ")
     })
@@ -187,6 +192,11 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         userCourses.col("level1"),
         userCourses.col("l1completionPercentage"))
     userCourseData.persist(StorageLevel.MEMORY_ONLY)
+
+    val testuserCourseData = userCourseData.where(col("contextid")==="cb:01308799953568563217"
+      && col("userid")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8").select(col("userid"))
+
+    JobLogger.log(s"user course after join length: ${testuserCourseData.count()}", None, INFO)
 
     for (index <- filteredBatches.indices) {
       val row = filteredBatches(index)
