@@ -96,7 +96,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 //    userAgg.show(false)
 
     val hierarchyData = loadData(spark, Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore), "org.apache.spark.sql.cassandra", new StructType())
-      .where(col("identifier")==="do_11308799051844812811152")
+//      .where(col("identifier")==="do_11308799051844812811152")
       .select("identifier","hierarchy")
 //    hierarchyData.show
 
@@ -107,7 +107,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     }).toDF()
 //    hierarchyDf.show(false)
 
-    val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "right")
+    val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "inner")
       .withColumn("completionPercentage", (userAgg.col("completedCount")/hierarchyDf.col("leafNodesCount")*100).cast("int"))
       .select(userAgg.col("user_id").as("userid"),
         userAgg.col("context_id").as("contextid"),
@@ -117,7 +117,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         hierarchyDf.col("l1leafNodesCount"))
 //    dataDf.show
 
-    val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"right")
+    val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"left")
       .withColumn("l1completionPercentage", (userAgg.col("completedCount")/dataDf.col("l1leafNodesCount")*100).cast("int"))
       .select(col("userid"),
         col("courseid"),
