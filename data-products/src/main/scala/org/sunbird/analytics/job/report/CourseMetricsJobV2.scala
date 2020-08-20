@@ -102,7 +102,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
       CourseData(courseInfo.lift(0).getOrElse(""), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
     }).toDF()
 
-    val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "left")
+    val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "inner")
       .withColumn("completionPercentage", (userAgg.col("completedCount")/hierarchyDf.col("leafNodesCount")*100).cast("int"))
       .select(userAgg.col("user_id").as("userid"),
         userAgg.col("context_id").as("contextid"),
@@ -111,7 +111,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         hierarchyDf.col("level1"),
         hierarchyDf.col("l1leafNodesCount"))
 
-    val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"left")
+    val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"outer")
       .withColumn("l1completionPercentage", (userAgg.col("completedCount")/dataDf.col("l1leafNodesCount")*100).cast("int"))
       .select(col("userid"),
         col("courseid"),
@@ -246,6 +246,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("certificate_status"),
         col("channel")
       )
+    JobLogger.log(s"CourseMetricsJob: userEnrolmentDF count ${userEnrolmentDF.count()} ", None, INFO)
     val contextId = s"cb:${batch.batchid}"
     // userCourseDenormDF lacks some of the user information that need to be part of the report here, it will add some more user details
     val reportDF = userEnrolmentDF
@@ -272,6 +273,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("level1"),
         col("l1completionPercentage")
       ).persist(StorageLevel.MEMORY_ONLY)
+    JobLogger.log(s"CourseMetricsJob: reportDF count ${reportDF.count()} ", None, INFO)
     reportDF
   }
 
