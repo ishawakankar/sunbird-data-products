@@ -89,11 +89,10 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     import sqlContext.implicits._
 
     val userAgg = loadData(spark, Map("table" -> "user_activity_agg", "keyspace" -> sunbirdCoursesKeyspace), "org.apache.spark.sql.cassandra", new StructType())
-      .where(col("user_id")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8" && col("activity_id")==="do_11308799051844812811152" && col("context_id")==="cb:01308799953568563217")
       .select("user_id","activity_id","agg","context_id").map(row => {
       UserAggData(row.getString(0),row.getString(1),row.get(2).asInstanceOf[Map[String,Int]]("completedCount"),row.getString(3))
     }).toDF()
-//    userAgg.show(false)
+    userAgg.show(false)
 
     val hierarchyData = loadData(spark, Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore), "org.apache.spark.sql.cassandra", new StructType())
 //      .where(col("identifier")==="do_11308799051844812811152")
@@ -105,7 +104,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
       val courseInfo = parseCourseHierarchy(List(hierarchy),0, List[String]())
       CourseData(courseInfo.lift(0).getOrElse(""), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
     }).toDF()
-//    hierarchyDf.show(false)
+    hierarchyDf.show(false)
 
     val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "inner")
       .withColumn("completionPercentage", (userAgg.col("completedCount")/hierarchyDf.col("leafNodesCount")*100).cast("int"))
@@ -115,7 +114,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("completionPercentage"),
         hierarchyDf.col("level1"),
         hierarchyDf.col("l1leafNodesCount"))
-//    dataDf.show
+    dataDf.show
 
     val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"left")
       .withColumn("l1completionPercentage", (userAgg.col("completedCount")/dataDf.col("l1leafNodesCount")*100).cast("int"))
@@ -125,6 +124,11 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("completionPercentage"),
         col("level1"),
         col("l1completionPercentage"))
+
+    resDf.
+      where(col("user_id")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8" && col("activity_id")==="do_11308799051844812811152" && col("context_id")==="cb:01308799953568563217")
+        .show(false)
+
     resDf
   }
 
