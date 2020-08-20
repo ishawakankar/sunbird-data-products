@@ -287,4 +287,14 @@ class TestCourseMetricsJobV2 extends BaseReportSpec with MockFactory with BaseRe
     spark = getSparkSession()
   }
 
+  it should "rin" in {
+    implicit val sc = spark
+    implicit val fc = new FrameworkContext
+    CourseMetricsJobV2.getUserCourseInfo(CourseMetricsJobV2.loadData).show(false)
+  }
+
+  it should "testre di" in {
+
+  }
+
 }
