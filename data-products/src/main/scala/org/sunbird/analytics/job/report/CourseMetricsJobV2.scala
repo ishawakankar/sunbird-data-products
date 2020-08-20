@@ -110,8 +110,11 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     val hierarchyDf = hierarchyData.rdd.map(row => {
       val hierarchy = JSONUtils.deserialize[Map[String,AnyRef]](row.getString(1))
       val courseInfo = parseCourseHierarchy(List(hierarchy),0, List[String]())
-      CourseData(courseInfo.lift(0).getOrElse(""), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
+      val coursed = CourseData(courseInfo.lift(0).getOrElse(""), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
+      JobLogger.log(s"CourseData length: ${coursed}", None, INFO)
+      coursed
     }).toDF()
+    hierarchyDf.show(false)
 
     val hierarchyDfcount = hierarchyDf.where(col("courseid")==="do_11308799051844812811152"
     ).select(col("courseid")).count()
@@ -129,7 +132,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 
     val dataDfcount = dataDf.where(col("courseid")==="do_11308799051844812811152" &&
       col("userid")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8" &&
-      col("contextid")==="01308799953568563217"
+      col("contextid")==="cb:01308799953568563217"
     ).select(col("courseid")).count()
     JobLogger.log(s"dataDfcount length: ${dataDfcount}", None, INFO)
 
@@ -145,7 +148,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 
     val resDfcount = resDf.where(col("courseid")==="do_11308799051844812811152" &&
       col("userid")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8" &&
-      col("contextid")==="01308799953568563217"
+      col("contextid")==="cb:01308799953568563217"
     ).select(col("courseid")).count()
     JobLogger.log(s"resDfcount length: ${resDfcount}", None, INFO)
 
