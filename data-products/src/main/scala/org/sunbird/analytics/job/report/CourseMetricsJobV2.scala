@@ -246,6 +246,8 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("certificate_status"),
         col("channel")
       )
+    userDF.show(false)
+//    val testdf = userDF.where(col("contextid")===contextId && )
     JobLogger.log(s"userEnrolmentDF data count ${userEnrolmentDF.count()} batch details: ${batch}", None, INFO)
     val contextId = s"cb:${batch.batchid}"
     // userCourseDenormDF lacks some of the user information that need to be part of the report here, it will add some more user details
