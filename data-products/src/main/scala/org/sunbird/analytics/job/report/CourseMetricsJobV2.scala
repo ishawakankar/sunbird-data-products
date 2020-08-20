@@ -93,14 +93,28 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
       UserAggData(row.getString(0),row.getString(1),row.get(2).asInstanceOf[Map[String,Int]]("completedCount"),row.getString(3))
     }).toDF()
 
+    val userAggcount = userAgg.where(col("context_id")==="cb:01308799953568563217"
+      && col("user_id")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8").select(col("user_id")).count()
+    JobLogger.log(s"userAggcount length: ${userAggcount}", None, INFO)
+
     val hierarchyData = loadData(spark, Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore), "org.apache.spark.sql.cassandra", new StructType())
       .select("identifier","hierarchy")
+
+    val hierarchyDatacount = hierarchyData.where(col("identifier")==="do_113087990518448128111527"
+      ).select(col("identifier")).count()
+    JobLogger.log(s"hierarchyDatacount length: ${hierarchyDatacount}", None, INFO)
+
 
     val hierarchyDf = hierarchyData.rdd.map(row => {
       val hierarchy = JSONUtils.deserialize[Map[String,AnyRef]](row.getString(1))
       val courseInfo = parseCourseHierarchy(List(hierarchy),0, List[String]())
       CourseData(courseInfo.lift(0).getOrElse(""), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
     }).toDF()
+
+    val hierarchyDfcount = hierarchyDf.where(col("courseid")==="do_113087990518448128111527"
+    ).select(col("courseid")).count()
+    JobLogger.log(s"hierarchyDfcount length: ${hierarchyDfcount}", None, INFO)
+
 
     val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "left")
       .withColumn("completionPercentage", (userAgg.col("completedCount")/hierarchyDf.col("leafNodesCount")*100).cast("int"))
@@ -111,6 +125,13 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         hierarchyDf.col("level1"),
         hierarchyDf.col("l1leafNodesCount"))
 
+    val dataDfcount = dataDf.where(col("courseid")==="do_113087990518448128111527" &&
+      col("userid")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8" &&
+      col("contextid")==="01308799953568563217"
+    ).select(col("courseid")).count()
+    JobLogger.log(s"hierarchyDfcount length: ${dataDfcount}", None, INFO)
+
+
     val resDf = dataDf.join(userAgg, dataDf.col("level1") === userAgg.col("activity_id"),"left")
       .withColumn("l1completionPercentage", (userAgg.col("completedCount")/dataDf.col("l1leafNodesCount")*100).cast("int"))
       .select(col("userid"),
@@ -119,6 +140,13 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("completionPercentage"),
         col("level1"),
         col("l1completionPercentage"))
+
+    val resDfcount = resDf.where(col("courseid")==="do_113087990518448128111527" &&
+      col("userid")==="95e4942d-cbe8-477d-aebd-ad8e6de4bfc8" &&
+      col("contextid")==="01308799953568563217"
+    ).select(col("courseid")).count()
+    JobLogger.log(s"hierarchyDfcount length: ${resDfcount}", None, INFO)
+
     resDf
   }
 
