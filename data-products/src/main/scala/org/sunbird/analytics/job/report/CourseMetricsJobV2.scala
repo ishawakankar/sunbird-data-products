@@ -106,11 +106,10 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
       ).select(col("identifier")).count()
     JobLogger.log(s"hierarchyDatacount length: ${hierarchyDatacount}", None, INFO)
 
-
     val hierarchyDf = hierarchyData.rdd.map(row => {
       val hierarchy = JSONUtils.deserialize[Map[String,AnyRef]](row.getString(1))
       val courseInfo = parseCourseHierarchy(List(hierarchy),0, List[String]())
-      val coursed = CourseData(courseInfo.lift(0).getOrElse(""), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
+      val coursed = CourseData(row.getString(0), courseInfo.lift(1).getOrElse(""), courseInfo.lift(2).getOrElse(""), courseInfo.lift(3).getOrElse(""))
       if(coursed.courseid=="do_11308799051844812811152") {
         JobLogger.log(s"CourseData length: ${coursed}", None, INFO)
       }
