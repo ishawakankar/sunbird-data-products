@@ -248,9 +248,12 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
       )
     val contextId = s"cb:${batch.batchid}"
 //    userDF.show(false)
-    val testdf = userDF.where(col("contextid") === contextId &&
-      col("courseid")===userEnrolmentDF.col("courseid") &&
-    col("userid")===userEnrolmentDF.col("userid"))
+    val testdf = userEnrolmentDF
+      .join(userDF, userDF.col("contextid") === contextId &&
+        userEnrolmentDF.col("courseid") === userDF.col("courseid") &&
+        userEnrolmentDF.col("userid") === userDF.col("userid"), "inner")
+        .select(userDF.col("userid"),userDF.col("contextid"),
+          userDF.col("courseid"),userEnrolmentDF.col("active"))
 
     testdf.show(false)
 
