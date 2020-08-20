@@ -246,6 +246,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("certificate_status"),
         col("channel")
       )
+    JobLogger.log(s"userEnrolmentDF data count ${userEnrolmentDF.count()} batch details: ${batch}", None, INFO)
     val contextId = s"cb:${batch.batchid}"
     // userCourseDenormDF lacks some of the user information that need to be part of the report here, it will add some more user details
     val reportDF = userEnrolmentDF
@@ -274,6 +275,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("level1"),
         col("l1completionPercentage")
       ).persist(StorageLevel.MEMORY_ONLY)
+    JobLogger.log(s"reportDF data count ${reportDF.count()} contextid = $contextId", None, INFO)
     reportDF
   }
 
