@@ -16,6 +16,7 @@ import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
 import org.sunbird.analytics.util.{CourseUtils, UserCache, UserData}
 import org.sunbird.cloud.storage.conf.AppConf
+import org.apache.commons.lang3.StringUtils
 
 import scala.collection.mutable
 
@@ -130,7 +131,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         val visibility = childNodes.getOrElse("visibility","").asInstanceOf[String]
         val contentType = childNodes.getOrElse("contentType","").asInstanceOf[String]
 
-        if(levelCount == 0 || (mimeType.equals("collection") && visibility.equals("Default") && contentType.equals("Course"))) {
+        if(levelCount == 0 || (StringUtils.equalsIgnoreCase(mimeType,"application/vnd.ekstep.content-collection") && StringUtils.equalsIgnoreCase(visibility,"Default") && StringUtils.equalsIgnoreCase(contentType,"Course"))) {
           val identifier = childNodes.getOrElse("identifier","").asInstanceOf[String]
           val leafNodesCount = childNodes.getOrElse("leafNodesCount",0).asInstanceOf[Int]
           val courseInfo = List(identifier, leafNodesCount.toString)
