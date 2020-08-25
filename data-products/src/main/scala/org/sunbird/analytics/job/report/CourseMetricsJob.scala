@@ -93,6 +93,7 @@ object CourseMetricsJob extends optional.Application with IJob with ReportGenera
       * 1. Fetching course_id and channel from content-model-snapshot
       * 2. Mapping it with course_batch details
       */
+      implicit val sc = spark.sparkContext
 
     val druidResult = recordTime(DruidDataFetcher.getDruidData(druidQuery), "Total time taken to fetch from druid: ")
     val finalResult = druidResult.map { f => JSONUtils.deserialize[DruidOutput](f) }
