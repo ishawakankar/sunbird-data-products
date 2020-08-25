@@ -169,6 +169,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     implicit val sqlContext: SQLContext = spark.sqlContext
     import sqlContext.implicits._
     val activeBatches = CourseUtils.getActiveBatches(loadData, batchList, sunbirdCoursesKeyspace)
+    JobLogger.log(s"activeBatches count ${activeBatches.count()}", None, INFO)
     val modelParams = config.modelParams.get
     val contentFilters = modelParams.getOrElse("contentFilters", Map()).asInstanceOf[Map[String,AnyRef]]
     val reportPath = modelParams.getOrElse("reportPath","course-progress-reports/").asInstanceOf[String]
@@ -180,9 +181,11 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     } else activeBatches.collect
 
     val userCourses = getUserCourseInfo(loadData).persist(StorageLevel.MEMORY_ONLY)
+    JobLogger.log(s"userCourses count ${userCourses.count()}", None, INFO)
     val userData = CommonUtil.time({
       recordTime(getUserData(spark, loadData), "Time taken to get generate the userData- ")
     })
+    JobLogger.log(s"userData count ${userData._2.count()}", None, INFO)
     val activeBatchesCount = new AtomicInteger(filteredBatches.length)
     metrics.put("userDFLoadTime", userData._1)
     metrics.put("activeBatchesCount", activeBatchesCount.get())
@@ -196,8 +199,8 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         userCourses.col("completionPercentage").as("course_completion"),
         userCourses.col("l1identifier"),
         userCourses.col("l1completionPercentage"))
+    JobLogger.log(s"userCourseData count ${userCourseData.count()}", None, INFO)
     userCourseData.persist(StorageLevel.MEMORY_ONLY)
-
     for (index <- filteredBatches.indices) {
       val row = filteredBatches(index)
       val courses = CourseUtils.getCourseInfo(spark, row.getString(0))
@@ -256,6 +259,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("certificate_status"),
         col("channel")
       )
+    JobLogger.log(s"userEnrolmentDF count ${userEnrolmentDF.count()}", None, INFO)
     val contextId = s"cb:${batch.batchid}"
     // userCourseDenormDF lacks some of the user information that need to be part of the report here, it will add some more user details
     val reportDF = userEnrolmentDF
@@ -284,6 +288,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("l1identifier"),
         col("l1completionPercentage")
       ).persist(StorageLevel.MEMORY_ONLY)
+    JobLogger.log(s"reportDF count ${reportDF.count()}", None, INFO)
     reportDF
   }
 
