@@ -100,11 +100,14 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 
     val hierarchyDataDf = hierarchyData.rdd.map(row => {
       val hierarchy = JSONUtils.deserialize[Map[String,AnyRef]](row.getString(1))
+      println(row.getString(0))
       parseCourseHierarchy(List(hierarchy),0, CourseData(row.getString(0),"0",List()))
     }).toDF()
+    hierarchyDataDf.show(false)
 
     val hierarchyDf = hierarchyDataDf.select($"courseid",$"leafNodesCount",$"level1Data", explode_outer($"level1Data").as("exploded_level1Data"))
       .select("courseid","leafNodesCount","exploded_level1Data.*")
+    hierarchyDf.show(false)
 
     val dataDf = hierarchyDf.join(userAgg,hierarchyDf.col("courseid") === userAgg.col("activity_id"), "left")
       .withColumn("completionPercentage", (userAgg.col("completedCount")/hierarchyDf.col("leafNodesCount")*100).cast("int"))
@@ -137,10 +140,12 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
           val identifier = childNodes.getOrElse("identifier","").asInstanceOf[String]
           val leafNodesCount = childNodes.getOrElse("leafNodesCount",0).asInstanceOf[Int]
           val courseData = if (levelCount == 0) {
+            println(prevData.courseid,"checking")
             CourseData(prevData.courseid, leafNodesCount.toString, List())
           } else if (levelCount == 1) {
+            println(identifier)
             val prevL1List = prevData.level1Data
-            CourseData(identifier, prevData.leafNodesCount, (prevL1List ::: List(Level1Data(identifier, leafNodesCount.toString))))
+            CourseData(prevData.courseid, prevData.leafNodesCount, (prevL1List ::: List(Level1Data(identifier, leafNodesCount.toString))))
           } else prevData
           val children = childNodes.getOrElse("children",List()).asInstanceOf[List[Map[String,AnyRef]]]
           if(null != children && children.nonEmpty) {
@@ -169,6 +174,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     implicit val sqlContext: SQLContext = spark.sqlContext
     import sqlContext.implicits._
     val activeBatches = CourseUtils.getActiveBatches(loadData, batchList, sunbirdCoursesKeyspace)
+//    activeBatches.show(false)
     JobLogger.log(s"activeBatches count ${activeBatches.count()}", None, INFO)
     val modelParams = config.modelParams.get
     val contentFilters = modelParams.getOrElse("contentFilters", Map()).asInstanceOf[Map[String,AnyRef]]
@@ -181,16 +187,19 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
     } else activeBatches.collect
 
     val userCourses = getUserCourseInfo(loadData).persist(StorageLevel.MEMORY_ONLY)
+    userCourses.show(false)
     JobLogger.log(s"userCourses count ${userCourses.count()}", None, INFO)
     val userData = CommonUtil.time({
       recordTime(getUserData(spark, loadData), "Time taken to get generate the userData- ")
     })
+//    userData._2.show(false)
     JobLogger.log(s"userData count ${userData._2.count()}", None, INFO)
     val activeBatchesCount = new AtomicInteger(filteredBatches.length)
     metrics.put("userDFLoadTime", userData._1)
     metrics.put("activeBatchesCount", activeBatchesCount.get())
     val batchFilters = JSONUtils.serialize(modelParams("batchFilters"))
     val userEnrolmentDF = getUserEnrollmentDF(loadData).persist(StorageLevel.MEMORY_ONLY)
+//    userEnrolmentDF.show(false)
 
     val userCourseData = userCourses.join(userData._2, userCourses.col("userid") === userData._2.col("userid"), "inner")
       .select(userData._2.col("*"),
@@ -201,10 +210,14 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         userCourses.col("l1completionPercentage"))
     JobLogger.log(s"userCourseData count ${userCourseData.count()}", None, INFO)
     userCourseData.persist(StorageLevel.MEMORY_ONLY)
+
+    userCourseData.show(false)
+    println(filteredBatches.length)
     for (index <- filteredBatches.indices) {
       val row = filteredBatches(index)
       val courses = CourseUtils.getCourseInfo(spark, row.getString(0))
       val batch = CourseBatch(row.getString(1), row.getString(2), row.getString(3), courses.channel);
+      println(batch,courses)
       if (null != courses.framework && courses.framework.nonEmpty && batchFilters.toLowerCase.contains(courses.framework.toLowerCase)) {
         val result = CommonUtil.time({
           val reportDF = recordTime(getReportDF(batch, userCourseData, userEnrolmentDF), s"Time taken to generate DF for batch ${batch.batchid} - ")
@@ -259,8 +272,12 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("certificate_status"),
         col("channel")
       )
+
+    userEnrolmentDF.select("courseid","userid","batchid").show(false)
+    userDF.select("courseid","userid","contextid").show(false)
     JobLogger.log(s"userEnrolmentDF count ${userEnrolmentDF.count()}", None, INFO)
     val contextId = s"cb:${batch.batchid}"
+    println("--------> contextId",contextId)
     // userCourseDenormDF lacks some of the user information that need to be part of the report here, it will add some more user details
     val reportDF = userEnrolmentDF
       .join(userDF, userDF.col("contextid") === contextId &&
@@ -289,6 +306,8 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
         col("l1completionPercentage")
       ).persist(StorageLevel.MEMORY_ONLY)
     JobLogger.log(s"reportDF count ${reportDF.count()}", None, INFO)
+    println("reportDf  ---------------")
+    reportDF.show(false)
     reportDF
   }
 

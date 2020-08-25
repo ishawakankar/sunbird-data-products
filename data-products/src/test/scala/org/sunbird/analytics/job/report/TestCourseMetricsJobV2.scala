@@ -302,6 +302,11 @@ class TestCourseMetricsJobV2 extends BaseReportSpec with MockFactory with BaseRe
       UserAgg("Course","do_1130934418641469441813","587204af-41db-4313-b3ab-cf022d3055c6","cb:0130934495109529602",Map("completedCount"->1),"{'completedCount': '2020-07-21 08:30:48.855000+0000'}")
     ).toDF()
 
+//    (reporterMock.loadData _)
+//      .expects(spark, Map("table" -> "course_batch", "keyspace" -> sunbirdCoursesKeyspace),"org.apache.spark.sql.cassandra", new StructType())
+//      .returning(courseBatchDF)
+
+    val schema = Encoders.product[UserData].schema
     (reporterMock.loadData _)
       .expects(spark, Map("table" -> "user_activity_agg", "keyspace" -> sunbirdCoursesKeyspace),"org.apache.spark.sql.cassandra", new StructType())
       .anyNumberOfTimes()
@@ -312,11 +317,47 @@ class TestCourseMetricsJobV2 extends BaseReportSpec with MockFactory with BaseRe
       .anyNumberOfTimes()
       .returning(contentDF)
 
+//    (reporterMock.loadData _)
+//      .expects(spark, Map("table" -> "user","infer.schema" -> "true", "key.column"-> "userid"),"org.apache.spark.sql.redis", schema)
+//      .anyNumberOfTimes()
+//      .returning(userDF)
+//
+//    val convertMethod = udf((value: mutable.WrappedArray[String]) => {
+//      if(null != value && value.nonEmpty)
+//        value.toList.map(str => JSONUtils.deserialize(str)(manifest[Map[String, String]])).toArray
+//      else null
+//    }, new ArrayType(MapType(StringType, StringType), true))
+//
+//    val alteredUserCourseDf = userCoursesDF.withColumn("certificates", convertMethod(split(userCoursesDF.col("certificates"), ",").cast("array<string>")) )
+//    (reporterMock.loadData _)
+//      .expects(spark, Map("table" -> "user_enrolments", "keyspace" -> sunbirdCoursesKeyspace),"org.apache.spark.sql.cassandra", new StructType())
+//      .anyNumberOfTimes()
+//      .returning(alteredUserCourseDf)
+//
+//    (reporterMock.loadData _)
+//      .expects(spark, Map("table" -> "user", "keyspace" -> sunbirdKeyspace),"org.apache.spark.sql.cassandra", new StructType())
+//      .anyNumberOfTimes()
+//      .returning(userDF)
+//
+//    (reporterMock.loadData _)
+//      .expects(spark, Map("table" -> "usr_external_identity", "keyspace" -> sunbirdKeyspace),"org.apache.spark.sql.cassandra", new StructType())
+//      .anyNumberOfTimes()
+//      .returning(externalIdentityDF)
+//
+//    (reporterMock.loadData _)
+//      .expects(spark, Map("table" -> "system_settings", "keyspace" -> sunbirdKeyspace),"org.apache.spark.sql.cassandra", new StructType())
+//      .anyNumberOfTimes()
+//      .returning(systemSettingDF)
+
     implicit val sc = spark
     implicit val fc = new FrameworkContext
 
+    val strConfig= """{"search":{"type":"none"},"model":"org.sunbird.analytics.job.report.CourseMetricsJobV2","modelParams":{"batchFilters":["NCFCOPY"],"druidConfig":{"queryType":"groupBy","dataSource":"content-model-snapshot","intervals":"LastDay","granularity":"all","aggregations":[{"name":"count","type":"count","fieldName":"count"}],"dimensions":[{"fieldName":"identifier","aliasName":"identifier"},{"fieldName":"channel","aliasName":"channel"}],"filters":[{"type":"equals","dimension":"contentType","value":"Course"}],"descending":"false"},"fromDate":"$(date --date yesterday '+%Y-%m-%d')","toDate":"$(date --date yesterday '+%Y-%m-%d')","sparkCassandraConnectionHost":"'$sunbirdPlatformCassandraHost'","sparkElasticsearchConnectionHost":"'$sunbirdPlatformElasticsearchHost'"},"output":[{"to":"console","params":{"printEvent":false}}],"parallelization":8,"appName":"Course Dashboard Metrics","deviceMapping":false}"""
+    val config = JSONUtils.deserialize[JobConfig](strConfig)
+
     val userCourses = CourseMetricsJobV2.getUserCourseInfo(reporterMock.loadData)
     userCourses.show(false)
+//    CourseMetricsJobV2.prepareReport(spark,StorageConfig("","",""),reporterMock.loadData, config, List())
   }
 
   it should "exp;ode col" in {
