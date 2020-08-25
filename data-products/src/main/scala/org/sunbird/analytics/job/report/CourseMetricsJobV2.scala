@@ -117,7 +117,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 
     val resDf = dataDf.join(userAgg, dataDf.col("l1identifier") === userAgg.col("activity_id") &&
       userAgg.col("context_id") === dataDf.col("contextid"),"left")
-      .withColumn("l1completionPercentage", (userAgg.col("completedCount")/dataDf.col("l1leafNodesCount")*100).cast("int"))
+      .withColumn("l1completionPercentage", concat((userAgg.col("completedCount")/dataDf.col("l1leafNodesCount")*100).cast("int"), lit("%")))
       .select(col("userid"),
         col("courseid"),
         col("contextid"),
@@ -289,7 +289,7 @@ object CourseMetricsJobV2 extends optional.Application with IJob with ReportGene
 
   def saveReportToBlobStore(batch: CourseBatch, reportDF: DataFrame, storageConfig: StorageConfig, totalRecords: Long, reportPath: String): Unit = {
     val transposeDF = reportDF.groupBy("courseid","batchid","userid")
-      .pivot(concat(col("l1identifier"), lit(" Progress"))).agg(concat(first("l1completionPercentage").cast("string"), lit("%")))
+      .pivot(concat(col("l1identifier"), lit(" Progress"))).agg(first("l1completionPercentage"))
     val reportData = transposeDF.join(reportDF, Seq("courseid", "batchid", "userid"), "inner")
       .drop("l1identifier","l1completionPercentage")
 
