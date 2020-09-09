@@ -104,6 +104,7 @@ object ETBMetricsModel extends IBatchModelTemplate[Empty,Empty,FinalOutput,Final
           .orderBy('medium,split(split('gradeLevel,",")(0)," ")(1).cast("int"),'subject)
         reportMap = updateReportPath(mergeConf, reportConfig, AppConf.getConfig("dcetextbook.filename"))
         CourseUtils.postDataToBlob(dceDf,f,config.updated("reportConfig",reportMap))
+
         generateAggReports(etbDf, dceDf, f, List(config, reportConfig, mergeConf))
 
         val dialdceDF = dceDialcodeReport.toDF()
@@ -181,43 +182,34 @@ object ETBMetricsModel extends IBatchModelTemplate[Empty,Empty,FinalOutput,Final
     CourseUtils.postDataToBlob(etbStatusDf,outputConf,aggConf.head.updated("reportConfig",reportMap))
 
     //etb_qr_count.csv
-
+    val etbQRCount = etbDf.withColumn("Status",when(col("totalQRLinked")+col("totalQRNotLinked")>0,"With QR Code").otherwise("Without QR Code"))
+      .groupBy("Status","slug").agg(count("identifier").alias("Count")).withColumn("reportName",lit("etb_qr_count"))
+    reportMap = updateReportPath(aggConf(2), aggConf(1), "etb_qr_count.csv")
+    CourseUtils.postDataToBlob(etbQRCount,outputConf,aggConf.head.updated("reportConfig",reportMap))
 
     //etb_textbook_status_grade.csv
-    val etbGradeStatus = etbDf.select($"slug",$"identifier",$"status",explode_outer(split('gradeLevel,",")).as("Class"))
-      .groupBy("Class","status","slug").pivot(col("status"))
+    val statusDf = List("Live","Draft","Review").toDF().withColumnRenamed("value","status")
+      .join(etbDf, Seq("status"),"outer")
+    val etbGradeStatus = statusDf.select($"slug",$"identifier",$"status",explode_outer(split('gradeLevel,",")).as("Class"))
+      .groupBy("Class","slug").pivot(col("status"))
       .agg(count("identifier")).drop("status").na.fill(0).withColumn("reportName",lit("etb_textbook_status_grade"))
       .orderBy("Class")
     reportMap = updateReportPath(aggConf(2), aggConf(1), "etb_textbook_status_grade.csv")
     CourseUtils.postDataToBlob(etbGradeStatus,outputConf,aggConf.head.updated("reportConfig",reportMap))
 
     //etb_textbook_status_subject.csv
-    val etbSubjectStatus = etbDf.select($"slug",$"identifier",$"status",explode_outer(split('subject,",")).as("Subject"))
-      .groupBy("Subject","status","slug").pivot(col("status"))
+    val etbSubjectStatus = statusDf.select($"slug",$"identifier",$"status",explode_outer(split('subject,",")).as("Subject"))
+      .groupBy("Subject","slug").pivot(col("status"))
       .agg(count("identifier")).drop("status").na.fill(0).withColumn("reportName",lit("etb_textbook_status_subject"))
       .orderBy("Subject")
     reportMap = updateReportPath(aggConf(2), aggConf(1), "etb_textbook_status_subject.csv")
     CourseUtils.postDataToBlob(etbSubjectStatus,outputConf,aggConf.head.updated("reportConfig",reportMap))
 
-    //        +-------+-----+----+
-    //        |subject|Draft|Live|
-    //        +-------+-----+----+
-    //        |    Bio|    0|   1|
-    //        |  Maths|    0|   1|
-    //        |  Maths|    1|   0|
-    //        +-------+-----+----+
-
     //etb_textbook_status.csv
-    val etbTextbookStatus = etbDf.groupBy("status","slug").agg(count(col("identifier"))
+    val etbTextbookStatus = statusDf.groupBy("status","slug").agg(count(col("identifier"))
       .as("Count")).withColumn("reportName",lit("etb_textbook_status"))
     reportMap = updateReportPath(aggConf(2), aggConf(1), "etb_textbook_status.csv")
     CourseUtils.postDataToBlob(etbTextbookStatus,outputConf,aggConf.head.updated("reportConfig",reportMap))
-    //        +------+-----+
-    //        |status|count|
-    //        +------+-----+
-    //        | Draft|    1|
-    //        |  Live|    2|
-    //        +------+-----+
 
   }
 
