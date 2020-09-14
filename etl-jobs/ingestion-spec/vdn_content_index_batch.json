@@ -780,7 +780,7 @@
           "blobs": [
             {
               "container": "telemetry-data-store",
-              "path": "/druid-content-snapshot/snapshot.txt"
+              "path": "/druid-content-snapshot/vdn-snapshot.txt"
             }
           ],
           "fetchTimeout": 300000
