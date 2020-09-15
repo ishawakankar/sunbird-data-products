@@ -109,8 +109,12 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${df.count()}", None, INFO)
 
+    val testDf = List("Live","Draft","Review").toDF()
+    df.show
+
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(df,f,config)
+      CourseUtils.postDataToBlob(testDf,f,config)
     }
 
     sc.emptyRDD
