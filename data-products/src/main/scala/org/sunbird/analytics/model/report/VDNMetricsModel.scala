@@ -38,7 +38,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     CommonUtil.setStorageConf(config.getOrElse("store", "local").toString, config.get("accountKey").asInstanceOf[Option[String]], config.get("accountSecret").asInstanceOf[Option[String]])
     val reportFilters = config.getOrElse("reportFilters", Map()).asInstanceOf[Map[String, AnyRef]]
 
-    val sparkConf = new SparkConf().setAppName("AnalyticsTestSuite").set("spark.default.parallelism", "2");
+//    val sparkConf = new SparkConf().setAppName("AnalyticsTestSuite").set("spark.default.parallelism", "2");
 //    sparkConf.set("spark.sql.shuffle.partitions", "2")
 //    sparkConf.setMaster("local[*]")
 //    sparkConf.set("spark.driver.memory", "1g")
