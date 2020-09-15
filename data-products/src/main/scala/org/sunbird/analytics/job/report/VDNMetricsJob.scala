@@ -97,7 +97,7 @@ object VDNMetricsJob extends optional.Application with IJob with BaseReportsJob 
 
     df.saveToBlobStore(storageConfig, "csv", "druid/"+"vdn-reports", Option(Map("header" -> "true")), None)
 
-    JobLogger.end("CourseMetrics Job completed successfully!", "SUCCESS", Option(Map("config" -> config, "model" -> name, "metrics" -> metrics)))
+    JobLogger.end("CourseMetrics Job completed successfully!", "SUCCESS", Option(Map("config" -> config, "model" -> "VDNMetrics")))
     fc.closeContext()
   }
 
