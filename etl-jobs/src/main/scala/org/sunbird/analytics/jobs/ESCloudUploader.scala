@@ -51,10 +51,10 @@ object ESCloudUploader {
         println("successfully backed up file to cloud!")
         
         // VDN data from a separate es host
-        val config = conf
+        val sparkConfig = conf
             .set("es.nodes", config.getString("elasticsearch.host"))
 
-        val vdnsparkSession = SparkSession.builder.config(config).getOrCreate
+        val vdnsparkSession = SparkSession.builder.config(sparkConfig).getOrCreate
         val sparkConf = vdnsparkSession.sparkContext
 
         sparkConf.esJsonRDD(index).map(data => s"""{ "timestamp": ${now.getTime}, "data": ${data._2} }""")
