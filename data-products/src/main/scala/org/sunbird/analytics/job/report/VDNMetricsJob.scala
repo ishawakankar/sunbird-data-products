@@ -8,7 +8,6 @@ import org.ekstep.analytics.framework.util.DatasetUtil.extensions
 import org.ekstep.analytics.framework.util.{CommonUtil, JSONUtils, JobLogger}
 import org.ekstep.analytics.framework.{FrameworkContext, IJob, JobConfig, JobContext, JobDriver, StorageConfig}
 import org.ekstep.analytics.model.ReportConfig
-import org.sunbird.analytics.model.report.VDNMetricsModel
 import org.sunbird.analytics.util.TextBookUtils
 import org.sunbird.cloud.storage.conf.AppConf
 
