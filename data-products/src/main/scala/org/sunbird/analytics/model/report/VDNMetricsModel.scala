@@ -78,9 +78,9 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     var contentD = List[TestContentdata]()
     JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
 
-    val testd=events.collect().toList
-    JobLogger.log(s"VDNMetricsJob: event size: ${testd.length}", None, INFO)
-    events.collect().toList.map(f => {
+//    val testd=events.collect().toList
+    JobLogger.log(s"VDNMetricsJob: event size: ${events.count()}", None, INFO)
+    val output=events.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
@@ -91,11 +91,13 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
       val contentData = dataTextbook._2
       finlData = report++finlData
       contentD = contentData++contentD
-//      (report,contentData)
+      (finlData,contentD)
     })
 
-    val reportData=finlData.toDF()
-    val contents = contentD.toDF()
+    JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
+
+    val reportData=output.map(f=>f._1).collect().toList.flatten.toDF()
+    val contents = output.map(f=>f._2).collect().toList.flatten.toDF()
 
     val df = reportData.join(contents,Seq("identifier"),"left_outer")
       .withColumn("slug",lit("unknown"))
