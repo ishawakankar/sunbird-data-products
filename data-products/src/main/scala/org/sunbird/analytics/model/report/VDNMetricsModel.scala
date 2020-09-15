@@ -96,8 +96,8 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
 
-    val reportData=output.map(f=>f._1).collect().toList.flatten.toDF()
-    val contents = output.map(f=>f._2).collect().toList.flatten.toDF()
+    val reportData=output.map(f=>f._1).toDF()
+    val contents = output.map(f=>f._2).toDF()
 
     val df = reportData.join(contents,Seq("identifier"),"left_outer")
       .withColumn("slug",lit("unknown"))
