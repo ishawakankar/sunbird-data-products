@@ -55,7 +55,7 @@ object VDNMetricsJob extends optional.Application with IJob with BaseReportsJob 
     val storageConfig = getStorageConfig("dev-data-store", "vdn-reports")
     val spark = SparkSession.builder.config(sparkConf).getOrCreate()
 
-    val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
+    val tableData=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
       .select("identifier","hierarchy")
 
     JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
@@ -63,7 +63,7 @@ object VDNMetricsJob extends optional.Application with IJob with BaseReportsJob 
     var finlData = List[TextbookReportResult]()
     var contentD = List[TestContentdata]()
 
-    val output=contents.collect().map(row => {
+    val output=tableData.collect().map(row => {
 //      val hierarchy = JSONUtils.deserialize[ContentHierarchy](row)
       val hierarchy = JSONUtils.deserialize[TextbookHierarchy](row.getString(1))
       if(hierarchy.contentType!=null && hierarchy.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
