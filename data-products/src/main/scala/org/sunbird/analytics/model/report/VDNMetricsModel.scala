@@ -108,6 +108,8 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
 
     JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${df.count()}", None, INFO)
+    JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
+
 
     val testDf = List("Live","Draft","Review").toDF()
     df.show
