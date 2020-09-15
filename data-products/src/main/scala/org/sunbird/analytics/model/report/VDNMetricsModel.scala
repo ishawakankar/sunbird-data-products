@@ -83,21 +83,25 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     val output=events.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
-      val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
+      if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
+        val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
 
-      val textbookReport = dataTextbook._1
-      val totalChapters = dataTextbook._3
-      val report = textbookReport.map(f=>TextbookReportResult(f.identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,totalChapters))
-      val contentData = dataTextbook._2
-      finlData = report++finlData
-      contentD = contentData++contentD
+        val textbookReport = dataTextbook._1
+        val totalChapters = dataTextbook._3
+        val report = textbookReport.map(f=>TextbookReportResult(f.identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,totalChapters))
+        val contentData = dataTextbook._2
+        finlData = report++finlData
+        contentD = contentData++contentD
+      }
       (finlData,contentD)
     })
 
     JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
 
-    val reportData=output.map(f=>f._1).toDF()
-    val contents = output.map(f=>f._2).toDF()
+    val reportData=output.map(f=>f._1).collect().toList.flatten.toDF()
+    val contents = output.map(f=>f._2).collect().toList.flatten.toDF()
+
+    JobLogger.log(s"VDNMetricsJob: Flattening reports", None, INFO)
 
     val df = reportData.join(contents,Seq("identifier"),"left_outer")
       .withColumn("slug",lit("unknown"))
