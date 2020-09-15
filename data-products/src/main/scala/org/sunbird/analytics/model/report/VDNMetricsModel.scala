@@ -77,7 +77,10 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     var finlData = List[TextbookReportResult]()
     var contentD = List[TestContentdata]()
     JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
-    events.collect().map(f => {
+
+    val testd=events.collect().toList
+    JobLogger.log(s"VDNMetricsJob: event size: ${testd.length}", None, INFO)
+    events.collect().toList.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
