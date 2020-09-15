@@ -76,23 +76,23 @@ object StateAdminReportJob extends optional.Application with IJob with StateAdmi
         import sparkSession.implicits._
         val userSelfDeclaredEncoder = Encoders.product[UserSelfDeclared].schema
         //loading user_declarations table details based on declared values and location details and appending org-external-id if present
-        var userSelfDeclaredDataDF = loadData(sparkSession, Map("table" -> "user_declarations", "keyspace" -> sunbirdKeyspace), Some(userSelfDeclaredEncoder))
-        userSelfDeclaredDataDF = userSelfDeclaredDataDF.select(col("*"), col("userinfo").getItem("declared-email").as("declared-email"), col("userinfo").getItem("declared-phone").as("declared-phone"),
+        val userSelfDeclaredDataDF = loadData(sparkSession, Map("table" -> "user_declarations", "keyspace" -> sunbirdKeyspace), Some(userSelfDeclaredEncoder))
+        val userSelfDeclaredUserInfoDataDF = userSelfDeclaredDataDF.select(col("*"), col("userinfo").getItem("declared-email").as("declared-email"), col("userinfo").getItem("declared-phone").as("declared-phone"),
             col("userinfo").getItem("declared-school-name").as("declared-school-name"), col("userinfo").getItem("declared-school-udise-code").as("declared-school-udise-code"),col("userinfo").getItem("declared-ext-id").as("declared-ext-id")).drop("userinfo");
         val locationDF = locationData()
         //to-do later check if externalid is necessary not-null check is necessary
         val orgExternalIdDf = loadOrganisationData().select("externalid","channel", "id","orgName").filter(col("channel").isNotNull)
-        userSelfDeclaredDataDF = userSelfDeclaredDataDF.join(orgExternalIdDf, userSelfDeclaredDataDF.col("orgid") === orgExternalIdDf.col("id"), "leftouter").
-            select(userSelfDeclaredDataDF.col("*"), orgExternalIdDf.col("*"))
-        userSelfDeclaredDataDF = userSelfDeclaredDataDF.withColumn("Diksha Sub-Org ID", when(userSelfDeclaredDataDF.col("declared-school-udise-code") === orgExternalIdDf.col("externalid"), userSelfDeclaredDataDF.col("declared-school-udise-code")).otherwise(lit("")))
+        val userSelfDeclaredExtIdDF = userSelfDeclaredUserInfoDataDF.join(orgExternalIdDf, userSelfDeclaredUserInfoDataDF.col("orgid") === orgExternalIdDf.col("id"), "leftouter").
+            select(userSelfDeclaredUserInfoDataDF.col("*"), orgExternalIdDf.col("*"))
         //decrypting email and phone values
-        val userDecrpytedDataDF = decryptDF(userSelfDeclaredDataDF)
+        //check declared-email and declared-phone positions in the DF while decrypting
+        val userDecrpytedDataDF = decryptDF(userSelfDeclaredExtIdDF)
         //appending decrypted values to the user-external-identifier dataframe
-        val userExternalDecryptData  = userSelfDeclaredDataDF.join(userDecrpytedDataDF, userSelfDeclaredDataDF.col("userid") === userDecrpytedDataDF.col("userid"), "left_outer").
-            select(userSelfDeclaredDataDF.col("*"), userDecrpytedDataDF.col("decrypted-email"), userDecrpytedDataDF.col("decrypted-phone"))
+        val userExternalDecryptData  = userSelfDeclaredExtIdDF.join(userDecrpytedDataDF, userSelfDeclaredExtIdDF.col("userid") === userDecrpytedDataDF.col("userid"), "left_outer").
+            select(userSelfDeclaredExtIdDF.col("*"), userDecrpytedDataDF.col("decrypted-email"), userDecrpytedDataDF.col("decrypted-phone"))
     
         //loading user data with location-details based on the user's from the user-external-identifier table
-        var userDf = loadData(sparkSession, Map("table" -> "user", "keyspace" -> sunbirdKeyspace), None).
+        val userDf = loadData(sparkSession, Map("table" -> "user", "keyspace" -> sunbirdKeyspace), None).
             select(col(  "userid"),
                 col("locationIds"),
                 concat_ws(" ", col("firstname"), col("lastname")).as("Name"))
@@ -126,10 +126,11 @@ object StateAdminReportJob extends optional.Application with IJob with StateAdmi
         }
     }
     
-    private def decryptDF(userExternalOriginalDataDF: DataFrame) (implicit sparkSession: SparkSession, fc: FrameworkContext) : DataFrame = {
+    private def decryptDF(userSelfDeclaredWithSubOrgDF: DataFrame) (implicit sparkSession: SparkSession, fc: FrameworkContext) : DataFrame = {
         import sparkSession.implicits._
-        val emailMap = userExternalOriginalDataDF.rdd.map(r => (r.getString(0), r.getString(3))).collectAsMap()
-        val phoneMap = userExternalOriginalDataDF.rdd.map(r => (r.getString(0), r.getString(5))).collectAsMap()
+        //check declared-email and declared-phone position in the RDD
+        val emailMap = userSelfDeclaredWithSubOrgDF.rdd.map(r => (r.getString(0), r.getString(5))).collectAsMap()
+        val phoneMap = userSelfDeclaredWithSubOrgDF.rdd.map(r => (r.getString(0), r.getString(6))).collectAsMap()
         val decEmailMap = collection.mutable.Map[String, String]()
         val decPhoneMap = collection.mutable.Map[String, String]()
         emailMap.foreach(email => {
@@ -161,7 +162,6 @@ object StateAdminReportJob extends optional.Application with IJob with StateAdmi
                 col("persona").as("Persona"),
                 col("status").as("Status"),
                 col("errortype").as("Error Type"),
-                col("Diksha Sub-Org ID"),
                 col("channel").as("Channel"),
                 col("channel").as("provider"))
         resultDf.saveToBlobStore(storageConfig, "csv", "declared_user_detail", Option(Map("header" -> "true")), Option(Seq("provider")))
