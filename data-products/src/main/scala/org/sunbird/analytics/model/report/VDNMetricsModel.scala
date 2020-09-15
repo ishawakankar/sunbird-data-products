@@ -4,7 +4,8 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.{col, concat, count, lit}
 import org.apache.spark.sql.{DataFrame, Encoders, Row, SQLContext, SparkSession}
-import org.ekstep.analytics.framework.util.{CommonUtil, JSONUtils, RestUtil}
+import org.ekstep.analytics.framework.Level.INFO
+import org.ekstep.analytics.framework.util.{CommonUtil, JSONUtils, JobLogger, RestUtil}
 import org.ekstep.analytics.framework.{AlgoInput, Empty, FrameworkContext, IBatchModelTemplate}
 import org.ekstep.analytics.model.ReportConfig
 import org.sunbird.analytics.util.{Constants, CourseUtils, TextBookUtils}
@@ -36,15 +37,15 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     CommonUtil.setStorageConf(config.getOrElse("store", "local").toString, config.get("accountKey").asInstanceOf[Option[String]], config.get("accountSecret").asInstanceOf[Option[String]])
     val reportFilters = config.getOrElse("reportFilters", Map()).asInstanceOf[Map[String, AnyRef]]
 
-//    val conf = new SparkConf().setAppName("AnalyticsTestSuite").set("spark.default.parallelism", "2");
-//    conf.set("spark.sql.shuffle.partitions", "2")
-//    conf.setMaster("local[*]")
-//    conf.set("spark.driver.memory", "1g")
-//    conf.set("spark.memory.fraction", "0.3")
-//    conf.set("spark.memory.storageFraction", "0.5")
-//    conf.set("spark.cassandra.connection.host", "localhost")
-//    conf.set("spark.cassandra.connection.port", "9042")
-//    conf.set("es.nodes", "http://localhost")
+//    val sparkConf = new SparkConf().setAppName("AnalyticsTestSuite").set("spark.default.parallelism", "2");
+//    sparkConf.set("spark.sql.shuffle.partitions", "2")
+//    sparkConf.setMaster("local[*]")
+//    sparkConf.set("spark.driver.memory", "1g")
+//    sparkConf.set("spark.memory.fraction", "0.3")
+//    sparkConf.set("spark.memory.storageFraction", "0.5")
+//    sparkConf.set("spark.cassandra.connection.host", "localhost")
+//    sparkConf.set("spark.cassandra.connection.port", "9042")
+//    sparkConf.set("es.nodes", "http://localhost")
 
     val readConsistencyLevel: String = AppConf.getConfig("course.metrics.cassandra.input.consistency")
     val sparkConf = sc.getConf
@@ -62,8 +63,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 //        .filter(identifiers => filteredTextbooks.contains(identifiers.getString(0)))
 //        .select("identifier","hierarchy")
 //    } else spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> "sunbird_courses")).load()
-
-    contents.show
+    JobLogger.log(s"VDNMetricsJob: Textbook Hierarchy data: No of records: ${contents.count()}", None, INFO)
 
     val encoder = Encoders.product[ContentHierarchy]
     contents.as[ContentHierarchy](encoder).rdd
@@ -76,7 +76,8 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     var finlData = List[TextbookReportResult]()
     var contentD = List[TestContentdata]()
-    val output=events.collect().map(f => {
+    JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
+    events.collect().map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
@@ -87,9 +88,8 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
       val contentData = dataTextbook._2
       finlData = report++finlData
       contentD = contentData++contentD
-      (report,contentData)
+//      (report,contentData)
     })
-    output.foreach(f=>println(f))
 
     val reportData=finlData.toDF()
     val contents = contentD.toDF()
@@ -101,6 +101,8 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     val configMap = config("reportConfig").asInstanceOf[Map[String, AnyRef]]
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
+
+    JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${df.count()}", None, INFO)
 
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(df,f,config)
