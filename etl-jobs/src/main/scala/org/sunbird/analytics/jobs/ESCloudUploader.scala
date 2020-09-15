@@ -47,8 +47,29 @@ object ESCloudUploader {
 
         // backup the output file to cloud
         val storageService = StorageServiceFactory.getStorageService(StorageConfig(config.getString("cloudStorage.provider"), config.getString("cloudStorage.accountName"), config.getString("cloudStorage.accountKey")))
+        storageService.upload(config.getString("cloudStorage.container"), outputFilePath + "/part-00000", config.getString("cloudStorage.objectKey"), isDirectory = Option(false))
+        println("successfully backed up file to cloud!")
+        
+        // VDN data from a separate es host
+        val config = conf
+            .set("es.nodes", config.getString("elasticsearch.host"))
+
+        val vdnsparkSession = SparkSession.builder.config(config).getOrCreate
+        val sparkConf = vdnsparkSession.sparkContext
+
+        println(s"deleting output folder if exist! : $outputFilePath")
+        val directory = new Directory(new File(outputFilePath))
+        if (directory.exists) directory.deleteRecursively()
+
+        sparkConf.esJsonRDD(index).map(data => s"""{ "timestamp": ${now.getTime}, "data": ${data._2} }""")
+            .coalesce(1)
+            .saveAsTextFile(outputFilePath)
+
+        // backup the output file to cloud
+        val storageService = StorageServiceFactory.getStorageService(StorageConfig(config.getString("cloudStorage.provider"), config.getString("cloudStorage.accountName"), config.getString("cloudStorage.accountKey")))
         storageService.upload(config.getString("cloudStorage.container"), outputFilePath + "/part-00000", config.getString("cloudStorage.vdn.objectKey"), isDirectory = Option(false))
         println("successfully backed up file to cloud!")
+
         System.exit(0)
     }
 }
