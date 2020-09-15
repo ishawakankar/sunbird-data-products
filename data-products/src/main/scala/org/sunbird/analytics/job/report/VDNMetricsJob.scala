@@ -29,7 +29,7 @@ object VDNMetricsJob extends optional.Application with IJob with BaseReportsJob 
 
   def main(config: String)(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None) {
     JobLogger.init("CourseMetricsJob")
-    JobLogger.start("CourseMetrics Job Started executing", Option(Map("config" -> config, "model" -> name)))
+    JobLogger.start("CourseMetrics Job Started executing", Option(Map("config" -> config, "model" -> "VDNMetrics")))
 
     val jobConfig = JSONUtils.deserialize[JobConfig](config)
 //val configMap = config("reportConfig").asInstanceOf[Map[String, AnyRef]]
