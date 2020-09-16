@@ -77,7 +77,7 @@ object VDNMetricsV2 extends optional.Application with IJob with BaseReportsJob {
     textbookReport.show()
     tenantInfo.show()
 
-    val finalDf = textbookReport.join(tenantInfo, Seq("channel"),"left_outer")
+    val finalDf = textbookReport.join(tenantInfo, textbookReport.col("channel")===tenantInfo.col("id"),"left_outer")
       .withColumn("reportName",lit("vdn-report"))
 
     val reportconfigMap = configMap("reportConfig").asInstanceOf[Map[String, AnyRef]]
