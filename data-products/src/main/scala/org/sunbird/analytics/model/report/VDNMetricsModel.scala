@@ -4,6 +4,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.{col, concat, count, lit}
 import org.apache.spark.sql.{DataFrame, Encoders, Row, SQLContext, SparkSession}
+import org.apache.spark.storage.StorageLevel
 import org.ekstep.analytics.framework.Level.INFO
 import org.ekstep.analytics.framework.util.{CommonUtil, HTTPClient, JSONUtils, JobLogger, RestUtil}
 import org.ekstep.analytics.framework.{AlgoInput, Empty, FrameworkContext, IBatchModelTemplate}
@@ -19,7 +20,7 @@ case class TextbookInfo(identifier: String, name: String, channel: String)
 case class TextbookHierarchy(channel: String, board: String, identifier: String, medium: Object, gradeLevel: List[String], subject: Object,
                              name: String, status: String, contentType: Option[String], leafNodesCount: Int, lastUpdatedOn: String,
                              depth: Int, createdOn: String, children: Option[List[TextbookHierarchy]], index: Int, parent: String)
-case class ContentHierarchy(identifier: String, hierarchy: String) extends AlgoInput
+case class ContentHierarchy(identifier: String, hierarchy: String)
 
 case class TextbookReport(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String)
 case class ContentData(contentType: String, count: Int)
@@ -29,30 +30,29 @@ case class TextbookReportResult(identifier: String, board: String, medium: Strin
 case class TextbookReportResults(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String,reportName:String,slug:String)
 case class TBResult(tbReport: TextbookReportResult, contentD: TestContentdata)
 
-object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,Empty] with Serializable {
+object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with Serializable {
 
   implicit val className: String = "org.sunbird.analytics.model.report.VDNMetricsModel"
   val sunbirdHierarchyStore: String = AppConf.getConfig("course.metrics.cassandra.sunbirdHierarchyStore")
 
   override def name: String = "VDNMetricsModel"
 
-  override def preProcess(events: RDD[Empty], config: Map[String, AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): RDD[ContentHierarchy] = {
+  override def preProcess(events: RDD[Empty], config: Map[String, AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): RDD[Empty] = {
     CommonUtil.setStorageConf(config.getOrElse("store", "local").toString, config.get("accountKey").asInstanceOf[Option[String]], config.get("accountSecret").asInstanceOf[Option[String]])
+    sc.emptyRDD
+  }
 
+  override def algorithm(events: RDD[Empty], config: Map[String, AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): RDD[Empty] = {
     val readConsistencyLevel: String = AppConf.getConfig("course.metrics.cassandra.input.consistency")
     val sparkConf = sc.getConf
       .set("spark.cassandra.input.consistency.level", readConsistencyLevel)
       .set("spark.sql.caseSensitive", AppConf.getConfig(key = "spark.sql.caseSensitive"))
     val spark: SparkSession = SparkSession.builder.config(sparkConf).getOrCreate()
 
-    val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
-    JobLogger.log(s"VDNMetricsJob: Textbook Hierarchy data: No of records: ${contents.count()}", None, INFO)
-
+    val contentDf=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
+    contentDf.persist(StorageLevel.MEMORY_ONLY)
     val encoder = Encoders.product[ContentHierarchy]
-    contents.as[ContentHierarchy](encoder).rdd
-  }
-
-  override def algorithm(events: RDD[ContentHierarchy], config: Map[String, AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): RDD[Empty] = {
+    val eventDf=contentDf.as[ContentHierarchy](encoder).rdd
 
     implicit val sqlContext = new SQLContext(sc)
     import sqlContext.implicits._
@@ -62,7 +62,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
 
     JobLogger.log(s"VDNMetricsJob: event size: ${events.count()}", None, INFO)
-    val output=events.map(f => {
+    val output=eventDf.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
@@ -89,6 +89,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
     JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
 
+
     JobLogger.log(s"VDNMetricsJob: saving report df: ${reportData.count()}", None, INFO)
     val tbResult = TextbookReportResult("","","","","","","","","")
     val df = reportData.fullOuterJoin(contents).map(f=>{
@@ -107,6 +108,8 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(finalDf,f,config)
     }
+
+    contentDf.unpersist(true)
 
     sc.emptyRDD
   }
