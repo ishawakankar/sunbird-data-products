@@ -87,7 +87,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
 
     JobLogger.log(s"VDNMetricsJob: Flattening reports", None, INFO)
 
-    val configMap = config("reportConfig").asInstanceOf[Map[String, AnyRef]]
+    val configMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
     JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
 
