@@ -38,17 +38,6 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
   override def preProcess(events: RDD[Empty], config: Map[String, AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): RDD[ContentHierarchy] = {
     CommonUtil.setStorageConf(config.getOrElse("store", "local").toString, config.get("accountKey").asInstanceOf[Option[String]], config.get("accountSecret").asInstanceOf[Option[String]])
-    val reportFilters = config.getOrElse("reportFilters", Map()).asInstanceOf[Map[String, AnyRef]]
-
-//    val sparkConf = new SparkConf().setAppName("AnalyticsTestSuite").set("spark.default.parallelism", "2");
-//    sparkConf.set("spark.sql.shuffle.partitions", "2")
-//    sparkConf.setMaster("local[*]")
-//    sparkConf.set("spark.driver.memory", "1g")
-//    sparkConf.set("spark.memory.fraction", "0.3")
-//    sparkConf.set("spark.memory.storageFraction", "0.5")
-//    sparkConf.set("spark.cassandra.connection.host", "localhost")
-//    sparkConf.set("spark.cassandra.connection.port", "9042")
-//    sparkConf.set("es.nodes", "http://localhost")
 
     val readConsistencyLevel: String = AppConf.getConfig("course.metrics.cassandra.input.consistency")
     val sparkConf = sc.getConf
@@ -56,18 +45,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
       .set("spark.sql.caseSensitive", AppConf.getConfig(key = "spark.sql.caseSensitive"))
     val spark: SparkSession = SparkSession.builder.config(sparkConf).getOrCreate()
 
-    //    val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> "sunbird_courses")).load()
-
     val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
-    contents.show
-//    val contents = if(reportFilters.nonEmpty) {
-//      println("non empty")
-//      val filteredTextbooks = getTextbooks(JSONUtils.serialize(reportFilters))
-//      println(filteredTextbooks)
-//      spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> "sunbird_courses")).load()
-//        .filter(identifiers => filteredTextbooks.contains(identifiers.getString(0)))
-//        .select("identifier","hierarchy")
-//    } else spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> "sunbird_courses")).load()
     JobLogger.log(s"VDNMetricsJob: Textbook Hierarchy data: No of records: ${contents.count()}", None, INFO)
 
     val encoder = Encoders.product[ContentHierarchy]
@@ -83,14 +61,12 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     var contentD = List[TestContentdata]()
     JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
 
-//    val testd=events.collect().toList
     JobLogger.log(s"VDNMetricsJob: event size: ${events.count()}", None, INFO)
     val output=events.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
         val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
-
         val textbookReport = dataTextbook._1
         val totalChapters = dataTextbook._3
         val report = textbookReport.map(f=>TextbookReportResult(f.identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,f.channel,totalChapters))
@@ -98,9 +74,6 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
         finlData = report++finlData
         contentD = contentData++contentD
       }
-//      println(finlData)
-//      finlData.toDF().show
-//      contentD.toDF().show
       (finlData,contentD)
 
     })
@@ -116,19 +89,12 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
     JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
 
-//    reportConfig.output.map { f =>
-//      CourseUtils.postDataToBlob(reportData.withColumn("slug",lit("test-slug")).withColumn("reportName",lit("report-data")),reportConfig.output.head,config)
-//    }
     JobLogger.log(s"VDNMetricsJob: saving report df: ${reportData.count()}", None, INFO)
-val tbResult = TextbookReportResult("","","","","","","","","")
+    val tbResult = TextbookReportResult("","","","","","","","","")
     val df = reportData.fullOuterJoin(contents).map(f=>{
       (f._2._1.getOrElse(tbResult).channel,f._2._1.getOrElse(tbResult))
     })
-//      .withColumn("slug",lit("unknown"))
-//      .withColumn("reportName", lit("content-data"))
 
-
-//    df.show
     val tenantInfo=getTenantInfo(RestUtil).map(e => (e.id,e))
     val finalDf=df.fullOuterJoin(tenantInfo).map(f=>{
       val data= f._2._1.getOrElse(tbResult)
@@ -136,11 +102,7 @@ val tbResult = TextbookReportResult("","","","","","","","","")
       data.totalChapters,"vdn-report",f._2._2.getOrElse(TenantInfo("","")).slug)
       }).toDF()
 
-
-
     JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${finalDf.count()}", None, INFO)
-
-
 
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(finalDf,f,config)
