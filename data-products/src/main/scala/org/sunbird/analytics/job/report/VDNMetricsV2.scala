@@ -17,8 +17,8 @@ import org.sunbird.cloud.storage.conf.AppConf
 
 case class TextbookInfoES(result: TextbookDataResult)
 case class TextbookDataResult(content: List[TextbookDataSet], count: Int)
-case class TextbookDataSet(channel: String, identifier: String, name: String, createdFor: String, createdOn: String, lastUpdatedOn: String,
-                        board: String, medium: String, gradeLevel: String, subject: String, status: String)
+case class TextbookDataSet(channel: String, identifier: String, name: String,
+                        board: Object, medium: Object, gradeLevel: Object, subject: Object, status: String)
 
 object VDNMetricsV2 extends optional.Application with IJob with BaseReportsJob {
 
@@ -74,12 +74,16 @@ object VDNMetricsV2 extends optional.Application with IJob with BaseReportsJob {
     val textbookReport = reportData.join(contents, Seq("identifier"),"left_outer")
 
     val tenantInfo=getTenantInfo(RestUtil).toDF()
+    textbookReport.show()
+    tenantInfo.show()
 
     val finalDf = textbookReport.join(tenantInfo, Seq("channel"),"left_outer")
       .withColumn("reportName",lit("vdn-report"))
 
     val reportconfigMap = configMap("reportConfig").asInstanceOf[Map[String, AnyRef]]
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(reportconfigMap))
+
+    finalDf.show
 
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(finalDf,f,configMap)
