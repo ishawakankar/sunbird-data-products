@@ -2,7 +2,7 @@
     "type":"index",
     "spec":{
       "dataSchema":{
-        "dataSource":"vdn_content-model-snapshot",
+        "dataSource":"vdn-content-model-snapshot",
         "parser":{
           "type":"string",
           "parseSpec":{
@@ -780,10 +780,10 @@
           "blobs": [
             {
               "container": "telemetry-data-store",
-              "path": "/druid-content-snapshot/snapshot.txt"
+              "path": "/druid-content-snapshot/vdn-snapshot.txt"
             }
           ],
-          "fetchTimeout": 300000
+          "fetchTimeout": 3000000
         }
       },
       "tuningConfig":{

@@ -47,11 +47,11 @@ curl -X 'DELETE' -H 'Content-Type:application/json' http://${druidCoordinatorIP}
 
 printf "\n>>> success!\n"
 
-# get list of segments from content model snapshot datasource
+# get list of segments from vdn content model snapshot datasource
 bkpIFS="$IFS"
-segmentIds=$(curl -X 'GET' -H 'Content-Type:application/json' http://${druidCoordinatorIP}:8081/druid/coordinator/v1/metadata/datasources/${vdnDataSourceName}/segments)
+vdnsegmentIds=$(curl -X 'GET' -H 'Content-Type:application/json' http://${druidCoordinatorIP}:8081/druid/coordinator/v1/metadata/datasources/${vdnDataSourceName}/segments)
 IFS=',]['
-read -r -a array <<< ${segmentIds}
+read -r -a arrayData <<< ${vdnsegmentIds}
 IFS="$bkpIFS"
 
 # start the spark script to fetch Elasticsearch data and write it to a file and upload to cloud
@@ -66,9 +66,9 @@ printf "\n>>> submit ingestion task to Druid!\n"
 curl -X 'POST' -H 'Content-Type:application/json' -d @${vdnIngestionSpecFilePath} http://${druidCoordinatorIP}:8090/druid/indexer/v1/task
 
 
-for index in "${!array[@]}"
+for index in "${!arrayData[@]}"
 do
-    val=( $(eval echo ${array[index]}) )
+    val=( $(eval echo ${arrayData[index]}) )
     printf "\n>>> Disabling segment id: $val \n"
     # disable older segments
     curl -X 'DELETE' -H 'Content-Type:application/json' http://${druidCoordinatorIP}:8081/druid/coordinator/v1/datasources/${vdnDataSourceName}/segments/$val
