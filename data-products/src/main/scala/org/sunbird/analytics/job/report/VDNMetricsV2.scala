@@ -102,7 +102,7 @@ object VDNMetricsV2 extends optional.Application with IJob with BaseReportsJob {
                      |		"sort_by": {
                      |			"createdOn": "desc"
                      |		},
-                     |		"limit": 10000
+                     |		"limit": 5
                      |	}
                      |}""".stripMargin
     val response = RestUtil.post[TextbookInfoES](url, request)
