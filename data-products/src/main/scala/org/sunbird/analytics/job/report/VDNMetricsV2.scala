@@ -86,7 +86,7 @@ object VDNMetricsV2 extends optional.Application with IJob with BaseReportsJob {
     finalDf.show
 
     reportConfig.output.map { f =>
-      CourseUtils.postDataToBlob(finalDf,f,configMap)
+      CourseUtils.postDataToBlob(finalDf,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]])
     }
 
   }
