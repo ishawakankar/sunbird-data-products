@@ -114,16 +114,23 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     JobLogger.log(s"VDNMetricsJob: Flattening reports", None, INFO)
 
+    val configMap = config("reportConfig").asInstanceOf[Map[String, AnyRef]]
+    val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
+    JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
+
+    reportConfig.output.map { f =>
+      CourseUtils.postDataToBlob(reportData.withColumn("slug",lit("test-slug")).withColumn("reportName",lit("report-data")),f,config)
+    }
+    JobLogger.log(s"VDNMetricsJob: saving report df: ${reportData.count()}", None, INFO)
+
     val df = reportData.join(contents,Seq("identifier"),"left_outer")
       .withColumn("slug",lit("unknown"))
       .withColumn("reportName", lit("content-data"))
 
+    df.show
 
-    val configMap = config("reportConfig").asInstanceOf[Map[String, AnyRef]]
-    val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(configMap))
 
     JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${df.count()}", None, INFO)
-    JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
 
 
     val testDf = List("Live","Draft","Review").toDF()
