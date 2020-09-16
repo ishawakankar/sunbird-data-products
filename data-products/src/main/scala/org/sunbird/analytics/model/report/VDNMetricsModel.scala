@@ -80,7 +80,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
 
     })
 
-    JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
+//    JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
 
     val reportData = output.map(f=>f._1).flatMap(f=>f).map(f=>(f.identifier,f))
     val contents = output.map(f=>f._2).flatMap(f=>f).map(f=>(f.identifier,f))
@@ -92,7 +92,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
     JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
 
 
-    JobLogger.log(s"VDNMetricsJob: saving report df: ${reportData.count()}", None, INFO)
+//    JobLogger.log(s"VDNMetricsJob: saving report df: ${reportData.count()}", None, INFO)
     val tbResult = TextbookReportResult("","","","","","","","","")
     val df = reportData.fullOuterJoin(contents).map(f=>{
       (f._2._1.getOrElse(tbResult).channel,f._2._1.getOrElse(tbResult))
@@ -105,7 +105,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
       data.totalChapters,"vdn-report",f._2._2.getOrElse(TenantInfo("","")).slug)
       }).toDF()
 
-    JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${finalDf.count()}", None, INFO)
+//    JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${finalDf.count()}", None, INFO)
 
     reportConfig.output.map { f =>
       CourseUtils.postDataToBlob(finalDf,f,config)
