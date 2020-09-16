@@ -56,7 +56,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     //    val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> "sunbird_courses")).load()
 
-    val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
+    val contents = spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
     contents.show
 //    val contents = if(reportFilters.nonEmpty) {
 //      println("non empty")
@@ -79,11 +79,13 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     var finlData = List[TextbookReportResult]()
     var contentD = List[TestContentdata]()
+
+    val result = events.collect().toList
     JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
 
 //    val testd=events.collect().toList
     JobLogger.log(s"VDNMetricsJob: event size: ${events.count()}", None, INFO)
-    val output=events.map(f => {
+    val output=result.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
@@ -103,11 +105,11 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     })
 
-    JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
+    JobLogger.log(s"VDNMetricsJob: output size: ${output.length}", None, INFO)
 
-    val reportData = output.map(f=>f._1).flatMap(f=>f).toDF()
+    val reportData = output.map(f=>f._1).flatten.toDF()
 
-    val contents = output.map(f=>f._2).flatMap(f=>f).toDF()
+    val contents = output.map(f=>f._2).flatten.toDF()
 
     reportData.show
     contents.show
