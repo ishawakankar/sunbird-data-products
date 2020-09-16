@@ -86,7 +86,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     val output=events.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
-//      if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
+      if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
         val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
 
         val textbookReport = dataTextbook._1
@@ -95,7 +95,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
         val contentData = dataTextbook._2
         finlData = report++finlData
         contentD = contentData++contentD
-//      }
+      }
 //      println(finlData)
 //      finlData.toDF().show
 //      contentD.toDF().show
@@ -105,7 +105,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
 
-    val reportData=output.map(f=>f._1).flatMap(f=>f).toDF()
+    val reportData = output.map(f=>f._1).flatMap(f=>f).toDF()
 
     val contents = output.map(f=>f._2).flatMap(f=>f).toDF()
 
