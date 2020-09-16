@@ -5,10 +5,11 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.{col, concat, count, lit}
 import org.apache.spark.sql.{DataFrame, Encoders, Row, SQLContext, SparkSession}
 import org.ekstep.analytics.framework.Level.INFO
-import org.ekstep.analytics.framework.util.{CommonUtil, JSONUtils, JobLogger, RestUtil}
+import org.ekstep.analytics.framework.util.{CommonUtil, HTTPClient, JSONUtils, JobLogger, RestUtil}
 import org.ekstep.analytics.framework.{AlgoInput, Empty, FrameworkContext, IBatchModelTemplate}
 import org.ekstep.analytics.model.ReportConfig
-import org.sunbird.analytics.util.{Constants, CourseUtils, TextBookUtils}
+import org.ekstep.analytics.util.Constants
+import org.sunbird.analytics.util.{CourseUtils, TextBookUtils}
 import org.sunbird.cloud.storage.conf.AppConf
 
 case class TextbookResponse(result: TextbookResult, responseCode: String)
@@ -20,11 +21,12 @@ case class TextbookHierarchy(channel: String, board: String, identifier: String,
                              depth: Int, createdOn: String, children: Option[List[TextbookHierarchy]], index: Int, parent: String)
 case class ContentHierarchy(identifier: String, hierarchy: String) extends AlgoInput
 
-case class TextbookReport(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String)
+case class TextbookReport(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String)
 case class ContentData(contentType: String, count: Int)
 case class TestContentdata(identifier: String, l1identifier: String, contentType: String)
 
-case class TextbookReportResult(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, totalChapters: String)
+case class TextbookReportResult(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String)
+case class TextbookReportResults(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String,reportName:String,slug:String)
 case class TBResult(tbReport: TextbookReportResult, contentD: TestContentdata)
 
 object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,Empty] with Serializable {
@@ -56,7 +58,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     //    val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> "sunbird_courses")).load()
 
-    val contents = spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
+    val contents=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
     contents.show
 //    val contents = if(reportFilters.nonEmpty) {
 //      println("non empty")
@@ -79,13 +81,11 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     var finlData = List[TextbookReportResult]()
     var contentD = List[TestContentdata]()
-
-    val result = events.collect().toList
     JobLogger.log(s"VDNMetricsJob: Processing dataframe", None, INFO)
 
 //    val testd=events.collect().toList
     JobLogger.log(s"VDNMetricsJob: event size: ${events.count()}", None, INFO)
-    val output=result.map(f => {
+    val output=events.map(f => {
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
@@ -93,7 +93,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
         val textbookReport = dataTextbook._1
         val totalChapters = dataTextbook._3
-        val report = textbookReport.map(f=>TextbookReportResult(f.identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,totalChapters))
+        val report = textbookReport.map(f=>TextbookReportResult(f.identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,f.channel,totalChapters))
         val contentData = dataTextbook._2
         finlData = report++finlData
         contentD = contentData++contentD
@@ -105,14 +105,10 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
     })
 
-    JobLogger.log(s"VDNMetricsJob: output size: ${output.length}", None, INFO)
+    JobLogger.log(s"VDNMetricsJob: output size: ${output.count()}", None, INFO)
 
-    val reportData = output.map(f=>f._1).flatten.toDF()
-
-    val contents = output.map(f=>f._2).flatten.toDF()
-
-    reportData.show
-    contents.show
+    val reportData = output.map(f=>f._1).flatMap(f=>f).map(f=>(f.identifier,f))
+    val contents = output.map(f=>f._2).flatMap(f=>f).map(f=>(f.identifier,f))
 
     JobLogger.log(s"VDNMetricsJob: Flattening reports", None, INFO)
 
@@ -121,26 +117,33 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
     JobLogger.log(s"VDNMetricsJob: reportconfig: ${reportConfig.output}", None, INFO)
 
 //    reportConfig.output.map { f =>
-      CourseUtils.postDataToBlob(reportData.withColumn("slug",lit("test-slug")).withColumn("reportName",lit("report-data")),reportConfig.output.head,config)
+//      CourseUtils.postDataToBlob(reportData.withColumn("slug",lit("test-slug")).withColumn("reportName",lit("report-data")),reportConfig.output.head,config)
 //    }
     JobLogger.log(s"VDNMetricsJob: saving report df: ${reportData.count()}", None, INFO)
-
-    val df = reportData.join(contents,Seq("identifier"),"left_outer")
-      .withColumn("slug",lit("unknown"))
-      .withColumn("reportName", lit("content-data"))
-
-    df.show
-
-
-    JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${df.count()}", None, INFO)
+val tbResult = TextbookReportResult("","","","","","","","","")
+    val df = reportData.fullOuterJoin(contents).map(f=>{
+      (f._2._1.getOrElse(tbResult).channel,f._2._1.getOrElse(tbResult))
+    })
+//      .withColumn("slug",lit("unknown"))
+//      .withColumn("reportName", lit("content-data"))
 
 
-    val testDf = List("Live","Draft","Review").toDF()
-    df.show
+//    df.show
+    val tenantInfo=getTenantInfo(RestUtil).map(e => (e.id,e))
+    val finalDf=df.fullOuterJoin(tenantInfo).map(f=>{
+      val data= f._2._1.getOrElse(tbResult)
+      TextbookReportResults(data.identifier,data.board,data.medium,data.grade,data.subject,data.name,data.chapters,data.channel,
+      data.totalChapters,"vdn-report",f._2._2.getOrElse(TenantInfo("","")).slug)
+      }).toDF()
+
+
+
+    JobLogger.log(s"VDNMetricsJob: records stats before cloud upload: No of records: ${finalDf.count()}", None, INFO)
+
+
 
     reportConfig.output.map { f =>
-      CourseUtils.postDataToBlob(df,f,config)
-      CourseUtils.postDataToBlob(testDf,f,config)
+      CourseUtils.postDataToBlob(finalDf,f,config)
     }
 
     sc.emptyRDD
@@ -173,7 +176,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
           val contentType = units.contentType.getOrElse("")
           l1identifier = units.identifier
           val grade = TextBookUtils.getString(textbookInfo.gradeLevel)
-          val report = TextbookReport(l1identifier,textbookInfo.board,TextBookUtils.getString(textbookInfo.medium),grade,TextBookUtils.getString(textbookInfo.subject),textbookInfo.name,units.name)
+          val report = TextbookReport(l1identifier,textbookInfo.board,TextBookUtils.getString(textbookInfo.medium),grade,TextBookUtils.getString(textbookInfo.subject),textbookInfo.name,units.name,textbookInfo.channel)
           totalChapters = (totalChapters.toInt+1).toString
           textbookReport = report :: textbookReport
         }
@@ -192,6 +195,21 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,ContentHierarchy,Empty,
 
 
     (textbookReport,contentData,totalChapters)
+  }
+
+  def getTenantInfo(restUtil: HTTPClient)(implicit sc: SparkContext):  RDD[TenantInfo] = {
+    val url = Constants.ORG_SEARCH_URL
+
+    val tenantRequest = s"""{
+                           |    "params": { },
+                           |    "request":{
+                           |        "filters": {"isRootOrg":"true"},
+                           |        "offset": 0,
+                           |        "limit": 1000,
+                           |        "fields": ["id", "channel", "slug", "orgName"]
+                           |    }
+                           |}""".stripMargin
+    sc.parallelize(restUtil.post[TenantResponse](url, tenantRequest).result.response.content)
   }
 
 }
