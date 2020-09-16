@@ -60,8 +60,8 @@ object ESCloudUploader {
         val sparkConf = vdnsparkSession.sparkContext
 
         println(s"deleting output folder if exist! : $outputVDNPath")
-        val directory = new Directory(new File(outputVDNPath))
-        if (directory.exists) directory.deleteRecursively()
+        val vdnDirectory = new Directory(new File(outputVDNPath))
+        if (vdnDirectory.exists) vdnDirectory.deleteRecursively()
 
         sparkConf.esJsonRDD(index).map(data => s"""{ "timestamp": ${now.getTime}, "data": ${data._2} }""")
             .coalesce(1)
