@@ -50,6 +50,8 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
     val spark: SparkSession = SparkSession.builder.config(sparkConf).getOrCreate()
 
     val contentDf=spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
+      .filter(f=>JSONUtils.deserialize[TextbookHierarchy](f.getString(1)).contentType.getOrElse("").equalsIgnoreCase("Textbook"))
+      .select("identifier","hierarchy")
     contentDf.persist(StorageLevel.MEMORY_ONLY)
     val encoder = Encoders.product[ContentHierarchy]
     val eventDf=contentDf.as[ContentHierarchy](encoder).rdd
