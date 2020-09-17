@@ -53,7 +53,7 @@ object ESCloudUploader {
 
         // VDN data from a separate es host
         val outputVDNPath = config.getString("outputVDNPath")
-        val sparkConfig = conf
+        val sparkConfig = new SparkConf()
         .setAppName("SparkEStoJSON")
             .setMaster("local[*]")
             // Elasticsearch settings
