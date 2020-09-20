@@ -22,11 +22,11 @@ case class TextbookHierarchy(channel: String, board: String, identifier: String,
                              depth: Int, createdOn: String, children: Option[List[TextbookHierarchy]], index: Int, parent: String)
 case class ContentHierarchy(identifier: String, hierarchy: String)
 
-case class TextbookReport(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String)
+case class TextbookReport(l1identifier:String,board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String)
 case class ContentData(contentType: String, count: Int)
 case class TestContentdata(identifier: String, l1identifier: String, contentType: String)
 
-case class TextbookReportResult(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String)
+case class TextbookReportResult(identifier: String,l1identifier: String,board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String)
 case class TextbookReportResults(identifier: String, board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String,reportName:String,slug:String)
 case class TBResult(tbReport: TextbookReportResult, contentD: TestContentdata)
 
@@ -68,13 +68,13 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
       val hierarchy = f.hierarchy
       val data = JSONUtils.deserialize[TextbookHierarchy](hierarchy)
       if(data.contentType!=null && data.contentType.getOrElse("").equalsIgnoreCase("Textbook")) {
-        val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
-        val textbookReport = dataTextbook._1
-        val totalChapters = dataTextbook._3
-        val report = textbookReport.map(f=>TextbookReportResult(f.identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,f.channel,totalChapters))
-        val contentData = dataTextbook._2
-        finlData = report++finlData
-        contentD = contentData++contentD
+//        val dataTextbook = generateReport(List(data), List(), List(),data,List(),List("","0"))
+//        val textbookReport = dataTextbook._1
+//        val totalChapters = dataTextbook._3
+//        val report = textbookReport.map(f=>TextbookReportResult(data.identifier,f.l1identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,f.channel,totalChapters))
+//        val contentData = dataTextbook._2
+//        finlData = report++finlData
+//        contentD = contentData++contentD
       }
       (finlData,contentD)
 
@@ -93,7 +93,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
 
 
 //    JobLogger.log(s"VDNMetricsJob: saving report df: ${reportData.count()}", None, INFO)
-    val tbResult = TextbookReportResult("","","","","","","","","")
+    val tbResult = TextbookReportResult("","","","","","","","","","")
     val df = reportData.fullOuterJoin(contents).map(f=>{
       (f._2._1.getOrElse(tbResult).channel,f._2._1.getOrElse(tbResult))
     })
@@ -129,17 +129,21 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
     } else List[String]()
   }
 
-  def generateReport(data: List[TextbookHierarchy], prevData: List[TextbookReport], newData: List[TextbookHierarchy],textbookInfo: TextbookHierarchy, contentInfo: List[TestContentdata], chapterInfo: List[String]): (List[TextbookReport],List[TestContentdata],String) = {
+  def generateReport(data: List[ContentInfo], prevData: List[TextbookReport], newData: List[ContentInfo],textbookInfo: ContentInfo, contentInfo: List[TestContentdata], chapterInfo: List[String]): (List[TextbookReport],List[TestContentdata],String) = {
     var textbookReport = prevData
     var contentData = contentInfo
     var l1identifier = chapterInfo(0)
     var totalChapters = chapterInfo(1)
-    var textbook = List[TextbookHierarchy]()
+    var textbook = List[ContentInfo]()
+
+//    println("in gfeneate reprrts",data)
 
       data.map(units=> {
+//        println(units.depth,units.children)
         val children = units.children
         if(units.depth==1) {
           textbook = units :: newData
+//          println("depth 1",units.depth,units.identifier)
           val contentType = units.contentType.getOrElse("")
           l1identifier = units.identifier
           val grade = TextBookUtils.getString(textbookInfo.gradeLevel)
@@ -149,6 +153,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
         }
 
         if(units.depth!=0 && units.contentType.getOrElse("").nonEmpty) {
+//          println("content",units.contentType)
           contentData = TestContentdata(textbookInfo.identifier,l1identifier, units.contentType.get) :: contentData
         }
 
