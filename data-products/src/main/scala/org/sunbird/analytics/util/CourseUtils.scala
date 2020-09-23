@@ -149,6 +149,7 @@ object CourseUtils {
     val mergeConfigStr = JSONUtils.serialize(mergeConfig)
     println("merge config: " + mergeConfigStr)
     val mergeReportCommand = Seq("bash", "-c",
+      s"PUBLIC_AZURE_STORAGE_ACCOUNT='${AppConf.getConfig("dock_reports_account_name")}' PUBLIC_AZURE_STORAGE_ACCESS_KEY='${AppConf.getConfig("dock_reports_account_key")}'" +
       s"source ${virtualEnvDir.get}/bin/activate; " +
         s"dataproducts report_merger --report_config='$mergeConfigStr'")
     JobLogger.log(s"Merge report script command:: $mergeReportCommand", None, INFO)
