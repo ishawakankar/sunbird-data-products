@@ -90,11 +90,11 @@ trait BaseReportsJob {
   }
 
   def getStorageConfig(container: String, key: String): org.ekstep.analytics.framework.StorageConfig = {
-    val reportsStorageAccountKey = AppConf.getConfig("reports_storage_key")
-    val reportsStorageAccountSecret = AppConf.getConfig("reports_storage_secret")
+    val reportsStorageAccountKey = AppConf.getConfig("dock_reports_account_name")
+    val reportsStorageAccountSecret = AppConf.getConfig("dock_reports_account_key")
     val provider = AppConf.getConfig("cloud_storage_type")
     if (reportsStorageAccountKey != null && !reportsStorageAccountSecret.isEmpty) {
-      org.ekstep.analytics.framework.StorageConfig(provider, container, key, Option("reports_storage_key"), Option("reports_storage_secret"));
+      org.ekstep.analytics.framework.StorageConfig(provider, container, key, Option("dock_reports_account_name"), Option("dock_reports_account_key"));
     } else {
       org.ekstep.analytics.framework.StorageConfig(provider, container, key, Option(provider), Option(provider));
     }

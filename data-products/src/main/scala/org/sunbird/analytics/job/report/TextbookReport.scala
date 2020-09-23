@@ -4,9 +4,11 @@ import org.apache.spark.SparkContext
 import org.apache.spark.sql.{Encoders, SQLContext, SparkSession}
 import org.apache.spark.sql.functions.{col, concat, count, lit, split}
 import org.ekstep.analytics.framework.Level.INFO
+import org.ekstep.analytics.framework.util.DatasetUtil.extensions
 import org.ekstep.analytics.framework.util.{JSONUtils, JobLogger, RestUtil}
 import org.ekstep.analytics.framework.{FrameworkContext, IJob, JobConfig, Level}
 import org.ekstep.analytics.model.ReportConfig
+import org.sunbird.analytics.job.report.CourseMetricsJobV2.getStorageConfig
 import org.sunbird.analytics.model.report.VDNMetricsModel.getTenantInfo
 import org.sunbird.analytics.model.report.{ContentHierarchy, TenantInfo, TestContentdata, TextbookData, TextbookHierarchy, TextbookReportResult}
 import org.sunbird.analytics.util.{CourseUtils, TextBookUtils}
@@ -159,11 +161,16 @@ val testd = TextbookReportResult("","","","","","","","","","")
       val reportConf = reportconfigMap.asInstanceOf[Map[String, AnyRef]]
       val mergeConf = reportConf.getOrElse("mergeConfig", Map()).asInstanceOf[Map[String,AnyRef]]
 
+      val storageConfig = getStorageConfig("reports", "ChapterLevel")
       var reportMap = updateTbReportName(mergeConf, reportConf, "ChapterLevel.csv")
-      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+//      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+      withConChap.saveToBlobStore(storageConfig, "csv", "ChapterLevel", Option(Map("header" -> "true")), None)
+      withConChap.saveToBlobStore(storageConfig, "json", "ChapterLevel", Option(Map("header" -> "true")), None)
 
       reportMap = updateTbReportName(mergeConf, reportConf, "TextbookLevel.csv")
-      CourseUtils.postDataToBlob(withCon,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+//      CourseUtils.postDataToBlob(withCon,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+      withCon.saveToBlobStore(storageConfig, "csv", "TextbookLevel", Option(Map("header" -> "true")), None)
+      withCon.saveToBlobStore(storageConfig, "json", "TextbookLevel", Option(Map("header" -> "true")), None)
     }
   }
 
