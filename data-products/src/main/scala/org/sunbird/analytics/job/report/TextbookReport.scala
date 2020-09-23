@@ -69,7 +69,7 @@ object TextbookReport extends optional.Application with IJob with BaseReportsJob
         val contentData = metricsTb._2
         val totalChapters = metricsTb._3
 
-        val report = tbRept.map(f => TextbookReportResult(tb.identifier,f.l1identifier,f.board,f.medium,f.grade,f.subject,f.name,f.chapters,f.channel,totalChapters))
+        val report = tbRept.map(f => TextbookReportResult(tb.identifier,f.l1identifier,tb.board,tb.medium,tb.gradeLevel,tb.subject,f.name,f.chapters,tb.channel,totalChapters))
 
         finlData = report.reverse ++ finlData
         contentD = contentData ++ contentD
@@ -163,14 +163,14 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
       val storageConfig = getStorageConfig("reports", "ChapterLevel")
       var reportMap = updateTbReportName(mergeConf, reportConf, "ChapterLevel.csv")
-//      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
-      withConChap.saveToBlobStore(storageConfig, "csv", "ChapterLevel", Option(Map("header" -> "true")), None)
-      withConChap.saveToBlobStore(storageConfig, "json", "ChapterLevel", Option(Map("header" -> "true")), None)
+      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+//      withConChap.saveToBlobStore(storageConfig, "csv", "", Option(Map("header" -> "true")), None)
+//      withConChap.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
 
       reportMap = updateTbReportName(mergeConf, reportConf, "TextbookLevel.csv")
-//      CourseUtils.postDataToBlob(withCon,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
-      withCon.saveToBlobStore(storageConfig, "csv", "TextbookLevel", Option(Map("header" -> "true")), None)
-      withCon.saveToBlobStore(storageConfig, "json", "TextbookLevel", Option(Map("header" -> "true")), None)
+      CourseUtils.postDataToBlob(withCon,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+//      withCon.saveToBlobStore(storageConfig, "csv", "", Option(Map("header" -> "true")), None)
+//      withCon.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
     }
   }
 

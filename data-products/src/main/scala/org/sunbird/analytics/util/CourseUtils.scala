@@ -116,8 +116,10 @@ object CourseUtils {
     val mergeConfig = reportConfig.mergeConfig
     val deltaFiles = if (dims.nonEmpty) {
       data.saveToBlobStore(storageConfig, format, reportId, Option(Map("header" -> "true")), Option(dims))
+      data.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), Option(dims))
     } else {
       data.saveToBlobStore(storageConfig, format, reportId, Option(Map("header" -> "true")), None)
+      data.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
     }
     if(mergeConfig.nonEmpty) {
       val mergeConf = mergeConfig.get
