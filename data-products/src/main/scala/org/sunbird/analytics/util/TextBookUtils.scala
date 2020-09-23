@@ -55,11 +55,11 @@ object TextBookUtils {
       val data = response.result.content
         val dceDialcode = generateDCEDialCodeReport(data, textbook)
         val dceDialcodeReport = dceDialcode._1
-        val etbDialcode = generateETBDialcodeReport(data, textbook)
-        val etbDialcodeReport = etbDialcode._1
-        val etbReport = generateETBTextbookReport(data, textbook)
-        val dceReport = generateDCETextbookReport(data, textbook)
-        (etbReport, dceReport, dceDialcodeReport, etbDialcodeReport, dceDialcode._2,etbDialcode._2)
+//        val etbDialcode = generateETBDialcodeReport(data, textbook)
+//        val etbDialcodeReport = etbDialcode._1
+//        val etbReport = generateETBTextbookReport(data, textbook)
+//        val dceReport = generateDCETextbookReport(data, textbook)
+        (List(), List(), dceDialcodeReport, List(), List(),List())
        }
        else (List(),List(),List(),List(),List(),List())
     } yield tupleData
@@ -67,13 +67,13 @@ object TextBookUtils {
     val dceTextBookReport = reportTuple.filter(f => f._2.nonEmpty).map(f => f._2.head)
     val dceDialCodeReport = reportTuple.map(f => f._3).filter(f => f.nonEmpty)
     val dcereport = dceDialCodeReport.flatten
-    val filteredReport = dcereport.filter(f=>(f.medium.contains(","))).distinct ++ dcereport.filter(p=>((!p.medium.contains(","))))
-    val dceDialcodeReport=filteredReport.filter(f=>(f.gradeLevel.contains(","))).distinct ++ filteredReport.filter(p=>((!p.gradeLevel.contains(","))))
+//    val filteredReport = dcereport.filter(f=>(f.medium.contains(","))).distinct ++ dcereport.filter(p=>((!p.medium.contains(","))))
+//    val dceDialcodeReport=filteredReport.filter(f=>(f.gradeLevel.contains(","))).distinct ++ filteredReport.filter(p=>((!p.gradeLevel.contains(","))))
     val etbDialCodeReport = reportTuple.map(f => f._4).filter(f => f.nonEmpty)
     val etbreport = etbDialCodeReport.flatten
     val dialcodeScans = reportTuple.map(f => f._5).filter(f=>f.nonEmpty) ++ reportTuple.map(f => f._6).filter(f=>f.nonEmpty)
     val scans = dialcodeScans.flatten
-    val dialcodeReport = dceDialcodeReport ++ etbreport
+    val dialcodeReport = dcereport ++ etbreport
 
     generateWeeklyScanReport(config, scans)
     generateTextBookReport(sc.parallelize(etbTextBookReport), sc.parallelize(dceTextBookReport), sc.parallelize(dialcodeReport), tenantInfo)

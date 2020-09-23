@@ -2,8 +2,8 @@
 package org.sunbird.analytics.job.report
 
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.{SQLContext, SparkSession}
-import org.apache.spark.sql.functions.{col, concat, count, lit}
+import org.apache.spark.sql.{Encoders, SQLContext, SparkSession}
+import org.apache.spark.sql.functions.{broadcast, col, concat, count, lit}
 import org.apache.spark.storage.StorageLevel
 import org.ekstep.analytics.framework.Level.INFO
 import org.ekstep.analytics.framework.conf.AppConf
@@ -128,20 +128,49 @@ object VDNMetricsV2 extends optional.Application with IJob with BaseReportsJob {
       f._2._1.getOrElse(testd).board,f._2._1.getOrElse(testd).medium,f._2._1.getOrElse(testd).grade,
       f._2._1.getOrElse(testd).subject,f._2._1.getOrElse(testd).name,f._2._1.getOrElse(testd).chapters,
       f._2._1.getOrElse(testd).channel,f._2._1.getOrElse(testd).totalChapters,f._2._1.getOrElse(testd).contentType,
-      f._2._2.getOrElse(TenantInfo("","")).slug,"vdn-report"))
+      f._2._2.getOrElse(TenantInfo("","Unknown")).slug,"vdn-report"))
     JobLogger.log(s"VDNMetricsJob: joined tenant info to textbook report", None, INFO)
 
-    val report = reportds.toDF()
+    val report = reportds.toDF().repartition(1)
 
     JobLogger.log(s"VDNMetricsJob: final report to df", None, INFO)
 //      .withColumn("reportName",lit("vdn-report"))
 //    report.persist(StorageLevel.MEMORY_ONLY)
 
     //time consumption
-    val testchapter = contents.map(f=>f._2).toDF().groupBy("identifier","l1identifier")
+//    JobLogger.log(s"VDNMetricsJob: dataframe lengths ${report.count()}", None, INFO)
+
+    val testchapter = contentRdd.toDF().groupBy("identifier","l1identifier")
       .pivot(concat(lit("Number of "), col("contentType"))).agg(count("l1identifier"))
       .na.fill(0)
     JobLogger.log(s"VDNMetricsJob: pivot with dataframe contents", None, INFO)
+    JobLogger.log(s"VDNMetricsJob: final report to dftestchapters ${testchapter.count()}", None, INFO)
+//    testchapter.persist(StorageLevel.MEMORY_ONLY)
+//    report.persist(StorageLevel.MEMORY_ONLY)
+
+//    val schm = testchapter.schema.toDS()
+//
+//    val encoder = Encoders.product[schm.type]
+//    testchapter.as[schm.type](encoder).rdd
+//    val eventDf=contentDf.as[ContentHierarchy](encoder).rdd
+
+    JobLogger.log(s"VDNMetricsJob: joining with broadcast dataframe 2", None, INFO)
+
+//val ds1 = testchapter.repartition(1)
+//    val ds2 = report.repartition(1)
+
+    JobLogger.log(s"VDNMetricsJob: before join ", None, INFO)
+
+    val newdf = testchapter.join(broadcast(report), Seq("identifier","l1identifier"),"inner")
+      .drop("identifier","l1identifier","channel","id","totalChapters")
+    newdf.show
+
+    JobLogger.log(s"VDNMetricsJob: calculated chapter level", None, INFO)
+
+//    testchapter.unpersist(true)
+//    report.unpersist(true)
+
+//    report.rollup("identifier").pivot("contentType").agg(count("identifier")).show
 
     //chapter level report
     val chapterReport = report.groupBy(report.drop("contentType").columns.map(col): _*)
