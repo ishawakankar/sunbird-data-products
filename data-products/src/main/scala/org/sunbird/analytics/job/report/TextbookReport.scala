@@ -157,24 +157,30 @@ val testd = TextbookReportResult("","","","","","","","","","")
     val reportconfigMap = configMap("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(reportconfigMap))
 
-    reportConfig.output.map { f =>
-      val reportConf = reportconfigMap.asInstanceOf[Map[String, AnyRef]]
-      val mergeConf = reportConf.getOrElse("mergeConfig", Map()).asInstanceOf[Map[String,AnyRef]]
 
-      val storageConfig = getStorageConfig("reports", "ChapterLevel")
-      var reportMap = updateTbReportName(mergeConf, reportConf, "ChapterLevel.csv")
-//      val tnp=configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap)
-//      val dims =  tnp.getOrElse("folderPrefix", List()).asInstanceOf[List[String]]
-//      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+    val storageConfig = getStorageConfig("reports", "ChapterLevel")
+    JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig", None, INFO)
 
-      withConChap.saveToBlobStore(storageConfig, "csv", "druid", Option(Map("header" -> "true")), Option(Seq("slug", "reportName")))
-//      withConChap.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
+    withConChap.saveToBlobStore(storageConfig, "csv", "druid", Option(Map("header" -> "true")), Option(Seq("slug", "reportName")))
 
-      reportMap = updateTbReportName(mergeConf, reportConf, "TextbookLevel.csv")
-      CourseUtils.postDataToBlob(withCon,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
-//      withCon.saveToBlobStore(storageConfig, "csv", "", Option(Map("header" -> "true")), None)
-//      withCon.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
-    }
+//    reportConfig.output.map { f =>
+//      val reportConf = reportconfigMap.asInstanceOf[Map[String, AnyRef]]
+////      val mergeConf = reportConf.getOrElse("mergeConfig", Map()).asInstanceOf[Map[String,AnyRef]]
+//
+//      val storageConfig = getStorageConfig("reports", "ChapterLevel")
+////      var reportMap = updateTbReportName(mergeConf, reportConf, "ChapterLevel.csv")
+////      val tnp=configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap)
+////      val dims =  tnp.getOrElse("folderPrefix", List()).asInstanceOf[List[String]]
+////      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+//
+//      withConChap.saveToBlobStore(storageConfig, "csv", "druid", Option(Map("header" -> "true")), Option(Seq("slug", "reportName")))
+////      withConChap.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
+//
+////      reportMap = updateTbReportName(mergeConf, reportConf, "TextbookLevel.csv")
+////      CourseUtils.postDataToBlob(withCon,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+////      withCon.saveToBlobStore(storageConfig, "csv", "", Option(Map("header" -> "true")), None)
+////      withCon.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
+//    }
   }
 
   def updateTbReportName(mergeConf: Map[String,AnyRef], reportConfig: Map[String,AnyRef], reportPath: String): Map[String,AnyRef] = {
