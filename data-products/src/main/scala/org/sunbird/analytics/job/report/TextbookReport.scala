@@ -161,7 +161,14 @@ val testd = TextbookReportResult("","","","","","","","","","")
     val storageConfig = getStorageConfig("reports", "ChapterLevel")
     JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig, ${withConChap.count()}", None, INFO)
 
+    val df = List(FinalReportV2("","id","","","","","","","","","test-slug","ChapterLevel"))
+      .toDF()
+      df.saveToBlobStore(storageConfig, "csv", "ChapterLevel",
+        Option(Map("header" -> "true")), Option(List("slug","reportName")))
+
     withConChap.saveToBlobStore(storageConfig, "csv", "ChapterLevel",
+      Option(Map("header" -> "true")), None)
+    withConChap.saveToBlobStore(storageConfig, "json", "ChapterLevel",
       Option(Map("header" -> "true")), None)
 
 //    reportConfig.output.map { f =>
