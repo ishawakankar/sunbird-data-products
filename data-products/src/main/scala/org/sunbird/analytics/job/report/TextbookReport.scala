@@ -15,7 +15,7 @@ import org.sunbird.analytics.util.{CourseUtils, TextBookUtils}
 import org.sunbird.cloud.storage.conf.AppConf
 
 case class TextbookReportClss(l1identifier:String,board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String)
-case class FinalReportV2(identifier: String,l1identifier: String,board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String, slug:String,reportName:String)
+case class FinalReportV2(identifier: String,l1identifier: String,board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String, slug:String)
 
 object TextbookReport extends optional.Application with IJob with BaseReportsJob {
 
@@ -116,7 +116,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
       f._2._1.getOrElse(testd).board,f._2._1.getOrElse(testd).medium,f._2._1.getOrElse(testd).grade,
       f._2._1.getOrElse(testd).subject,f._2._1.getOrElse(testd).name,f._2._1.getOrElse(testd).chapters,
       f._2._1.getOrElse(testd).channel,f._2._1.getOrElse(testd).totalChapters,
-      f._2._2.getOrElse(TenantInfo("","Unknown")).slug,"vdn-report"))
+      f._2._2.getOrElse(TenantInfo("","Unknown")).slug))
     JobLogger.log(s"VDNMetricsJob: joined tenant info to textbook report", None, INFO)
 
     implicit val sqlContext = new SQLContext(sc)
@@ -133,10 +133,12 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
     val withCon = report.join(contDfTb, Seq("identifier"),"inner")
       .drop("identifier","channel","id","chapters","l1identifier")
+      .withColumn("reportName",lit("TextbookLevel"))
       .orderBy('medium,split(split('grade,",")(0)," ")(1).cast("int"),'subject,'name)
 
     val withConChap = report.join(contDfchap, Seq("identifier","l1identifier"),"inner")
       .drop("identifier","l1identifier","channel","id","totalChapters")
+      .withColumn("reportName",lit("ChapterLevel"))
       .orderBy('medium,split(split('grade,",")(0)," ")(1).cast("int"),'subject,'name,'chapters)
 
 //    //chapter level report
