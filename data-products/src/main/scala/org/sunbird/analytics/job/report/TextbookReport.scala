@@ -159,9 +159,10 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
 
     val storageConfig = getStorageConfig("reports", "ChapterLevel")
-    JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig", None, INFO)
+    JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig, ${withConChap.count()}", None, INFO)
 
-    withConChap.saveToBlobStore(storageConfig, "csv", "druid", Option(Map("header" -> "true")), Option(Seq("slug", "reportName")))
+    withConChap.saveToBlobStore(storageConfig, "csv", "ChapterLevel",
+      Option(Map("header" -> "true")), None)
 
 //    reportConfig.output.map { f =>
 //      val reportConf = reportconfigMap.asInstanceOf[Map[String, AnyRef]]
