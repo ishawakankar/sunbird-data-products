@@ -181,7 +181,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
     val fieldsList2 = withConChap.columns
-    val filteredDf2 = df.select(fieldsList2.head, fieldsList2.tail: _*)
+    val filteredDf2 = withConChap.select(fieldsList2.head, fieldsList2.tail: _*)
     val renamedDf2 = filteredDf2.select(filteredDf2.columns.map(c => filteredDf2.col(c).as(labelsLookup.getOrElse(c, c))): _*)
 
     renamedDf2.saveToBlobStore(storageConfig, "csv", "",
@@ -191,7 +191,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
 
     val fieldsList3 = withCon.columns
-    val filteredDf3 = df.select(fieldsList3.head, fieldsList3.tail: _*)
+    val filteredDf3 = withCon.select(fieldsList3.head, fieldsList3.tail: _*)
     val renamedDf3 = filteredDf3.select(filteredDf3.columns.map(c => filteredDf3.col(c).as(labelsLookup.getOrElse(c, c))): _*)
 
     renamedDf3.saveToBlobStore(storageConfig, "csv", "",
