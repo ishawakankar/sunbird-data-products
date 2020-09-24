@@ -109,8 +109,8 @@ object CourseUtils {
     val container = config.getOrElse("container", "test-container").toString
     val storageConfig = StorageConfig(config.getOrElse("store", "local").toString,
       container, config.getOrElse("filePath", "/tmp/druid-reports").toString,
-      AppConf.getConfig("dock_reports_account_name").asInstanceOf[Option[String]],
-      AppConf.getConfig("dock_reports_account_key").asInstanceOf[Option[String]])
+      Option(AppConf.getConfig("dock_reports_account_name")),
+      Option(AppConf.getConfig("dock_reports_account_key")))
     val format = config.getOrElse("format", "csv").asInstanceOf[String]
     val key = config.getOrElse("key", null).asInstanceOf[String]
     val reportId = config.getOrElse("reportId", "").asInstanceOf[String]
