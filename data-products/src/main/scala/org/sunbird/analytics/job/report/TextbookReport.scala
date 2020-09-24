@@ -174,6 +174,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
 //    val dimsLabels = labelsLookup.filter(x => outputConfig.dims.contains(x._1)).values.toList
     val filteredDf = df.select(fieldsList.head, fieldsList.tail: _*)
     val renamedDf = filteredDf.select(filteredDf.columns.map(c => filteredDf.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+      .withColumn("reportName",lit("test-report"))
 
     renamedDf.saveToBlobStore(storageConfig, "csv", "",
         Option(Map("header" -> "true")), Option(List("slug","reportName")))
