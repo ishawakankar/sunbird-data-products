@@ -114,12 +114,13 @@ object CourseUtils {
     val fileParameters = config.getOrElse("fileParameters", List("")).asInstanceOf[List[String]]
     val dims = config.getOrElse("folderPrefix", List()).asInstanceOf[List[String]]
     val mergeConfig = reportConfig.mergeConfig
+    JobLogger.log(s"VDNMetricsJob: saving report to blob $dims, $storageConfig", None, INFO)
     val deltaFiles = if (dims.nonEmpty) {
-      data.saveToBlobStore(storageConfig, format, reportId, Option(Map("header" -> "true")), Option(dims))
-      data.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), Option(dims))
+      data.saveToBlobStore(storageConfig, format, "test", Option(Map("header" -> "true")), Option(dims))
+      data.saveToBlobStore(storageConfig, "json", "test", Option(Map("header" -> "true")), Option(dims))
     } else {
-      data.saveToBlobStore(storageConfig, format, reportId, Option(Map("header" -> "true")), None)
-      data.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
+      data.saveToBlobStore(storageConfig, format, "test", Option(Map("header" -> "true")), None)
+      data.saveToBlobStore(storageConfig, "json", "test", Option(Map("header" -> "true")), None)
     }
     if(mergeConfig.nonEmpty) {
       val mergeConf = mergeConfig.get

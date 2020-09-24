@@ -177,7 +177,7 @@ object VDNMetricsModel extends IBatchModelTemplate[Empty,Empty,Empty,Empty] with
                            |    "request":{
                            |        "filters": {"isRootOrg":"true"},
                            |        "offset": 0,
-                           |        "limit": 1000,
+                           |        "limit": 10000,
                            |        "fields": ["id", "channel", "slug", "orgName"]
                            |    }
                            |}""".stripMargin
