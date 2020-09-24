@@ -163,8 +163,11 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
       val storageConfig = getStorageConfig("reports", "ChapterLevel")
       var reportMap = updateTbReportName(mergeConf, reportConf, "ChapterLevel.csv")
-      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
-//      withConChap.saveToBlobStore(storageConfig, "csv", "", Option(Map("header" -> "true")), None)
+//      val tnp=configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap)
+//      val dims =  tnp.getOrElse("folderPrefix", List()).asInstanceOf[List[String]]
+//      CourseUtils.postDataToBlob(withConChap,f,configMap("modelParams").asInstanceOf[Map[String, AnyRef]].updated("reportConfig",reportMap))
+
+      withConChap.saveToBlobStore(storageConfig, "csv", "druid", Option(Map("header" -> "true")), Option(Seq("slug", "reportName")))
 //      withConChap.saveToBlobStore(storageConfig, "json", "", Option(Map("header" -> "true")), None)
 
       reportMap = updateTbReportName(mergeConf, reportConf, "TextbookLevel.csv")
