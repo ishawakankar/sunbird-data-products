@@ -164,7 +164,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
     JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig, ${withConChap.count()}, ${withCon.count()}", None, INFO)
 
 
-    val df = List(FinalReportV2("","id","","","","","","","","","test-slug","ChapterLevel"))
+    val df = List(FinalReportV2("","id","","","","","","","","","test-slug"))
       .toDF()
 
     val tmpConf = configMap("modelParams").asInstanceOf[Map[String, AnyRef]]
