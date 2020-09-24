@@ -107,14 +107,17 @@ object CourseUtils {
 
   def saveReport(data: DataFrame, config: Map[String, AnyRef], reportConfig: ReportConfig)(implicit sc: SparkContext, fc: FrameworkContext): Unit = {
     val container = config.getOrElse("container", "test-container").toString
-    val storageConfig = StorageConfig(config.getOrElse("store", "local").toString, container, config.getOrElse("filePath", "/tmp/druid-reports").toString, config.get("accountKey").asInstanceOf[Option[String]], config.get("accountSecret").asInstanceOf[Option[String]])
+    val storageConfig = StorageConfig(config.getOrElse("store", "local").toString,
+      container, config.getOrElse("filePath", "/tmp/druid-reports").toString,
+      AppConf.getConfig("dock_reports_account_name").asInstanceOf[Option[String]],
+      AppConf.getConfig("dock_reports_account_key").asInstanceOf[Option[String]])
     val format = config.getOrElse("format", "csv").asInstanceOf[String]
     val key = config.getOrElse("key", null).asInstanceOf[String]
     val reportId = config.getOrElse("reportId", "").asInstanceOf[String]
     val fileParameters = config.getOrElse("fileParameters", List("")).asInstanceOf[List[String]]
     val dims = config.getOrElse("folderPrefix", List()).asInstanceOf[List[String]]
     val mergeConfig = reportConfig.mergeConfig
-    JobLogger.log(s"VDNMetricsJob: saving report to blob $dims, $storageConfig", None, INFO)
+    JobLogger.log(s"VDNMetricsJob: saving report to blob $dims, $storageConfig ${data.count()}", None, INFO)
     val deltaFiles = if (dims.nonEmpty) {
       data.saveToBlobStore(storageConfig, format, "test", Option(Map("header" -> "true")), Option(dims))
       data.saveToBlobStore(storageConfig, "json", "test", Option(Map("header" -> "true")), Option(dims))
