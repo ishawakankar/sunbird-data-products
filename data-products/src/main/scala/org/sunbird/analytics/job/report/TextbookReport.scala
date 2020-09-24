@@ -161,10 +161,24 @@ val testd = TextbookReportResult("","","","","","","","","","")
     val storageConfig = getStorageConfig("reports", "")
     JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig, ${withConChap.count()}", None, INFO)
 
+
     val df = List(FinalReportV2("","id","","","","","","","","","test-slug","ChapterLevel"))
       .toDF()
-      df.saveToBlobStore(storageConfig, "csv", "",
+
+    val tmpConf = configMap("modelParams").asInstanceOf[Map[String, AnyRef]]
+    val labelsLookup = reportConfig.labels ++ Map("date" -> "Date")
+//    val key = tmpConf.getOrElse("key", null).asInstanceOf[String]
+
+    val fieldsList = df.columns
+//    val outputConfig = reportConfig.output.head
+//    val dimsLabels = labelsLookup.filter(x => outputConfig.dims.contains(x._1)).values.toList
+    val filteredDf = df.select(fieldsList.head, fieldsList.tail: _*)
+    val renamedDf = filteredDf.select(filteredDf.columns.map(c => filteredDf.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+
+    renamedDf.saveToBlobStore(storageConfig, "csv", "",
         Option(Map("header" -> "true")), Option(List("slug","reportName")))
+    renamedDf.saveToBlobStore(storageConfig, "json", "",
+      Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
     withConChap.saveToBlobStore(storageConfig, "csv", "ChapterLevel",
       Option(Map("header" -> "true")), None)
