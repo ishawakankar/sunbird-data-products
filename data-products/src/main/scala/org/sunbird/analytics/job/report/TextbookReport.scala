@@ -69,7 +69,7 @@ object TextbookReport extends optional.Application with IJob with BaseReportsJob
         val contentData = metricsTb._2
         val totalChapters = metricsTb._3
 
-        val report = tbRept.map(f => TextbookReportResult(tb.identifier,f.l1identifier,tb.board,tb.medium,tb.gradeLevel,tb.subject,f.name,f.chapters,tb.channel,totalChapters))
+        val report = tbRept.map(f => TextbookReportResult(tb.identifier,f.l1identifier,tb.board,tb.medium,tb.gradeLevel,tb.subject,tb.name,f.chapters,tb.channel,totalChapters))
 
         finlData = report.reverse ++ finlData
         contentD = contentData ++ contentD
