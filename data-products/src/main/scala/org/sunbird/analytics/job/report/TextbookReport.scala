@@ -133,12 +133,10 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
     val withCon = report.join(contDfTb, Seq("identifier"),"inner")
       .drop("identifier","channel","id","chapters","l1identifier")
-      .withColumn("reportName",lit("TextbookLevel"))
       .orderBy('medium,split(split('grade,",")(0)," ")(1).cast("int"),'subject,'name)
 
     val withConChap = report.join(contDfchap, Seq("identifier","l1identifier"),"inner")
       .drop("identifier","l1identifier","channel","id","totalChapters")
-      .withColumn("reportName",lit("ChapterLevel"))
       .orderBy('medium,split(split('grade,",")(0)," ")(1).cast("int"),'subject,'name,'chapters)
 
 //    //chapter level report
@@ -184,7 +182,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
     val fieldsList2 = withConChap.columns
     val filteredDf2 = withConChap.select(fieldsList2.head, fieldsList2.tail: _*)
-    val renamedDf2 = filteredDf2.select(filteredDf2.columns.map(c => filteredDf2.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+    val renamedDf2 = filteredDf2.select(filteredDf2.columns.map(c => filteredDf2.col(c).as(labelsLookup.getOrElse(c, c))): _*).withColumn("reportName",lit("ChapterLevel"))
 
     renamedDf2.saveToBlobStore(storageConfig, "csv", "",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
@@ -194,7 +192,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
     val fieldsList3 = withCon.columns
     val filteredDf3 = withCon.select(fieldsList3.head, fieldsList3.tail: _*)
-    val renamedDf3 = filteredDf3.select(filteredDf3.columns.map(c => filteredDf3.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+    val renamedDf3 = filteredDf3.select(filteredDf3.columns.map(c => filteredDf3.col(c).as(labelsLookup.getOrElse(c, c))): _*).withColumn("reportName",lit("TextbookLevel"))
 
     renamedDf3.saveToBlobStore(storageConfig, "csv", "",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
