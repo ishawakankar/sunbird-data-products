@@ -158,7 +158,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(reportconfigMap))
 
 
-    val storageConfig = getStorageConfig("reports", "ChapterLevel")
+    val storageConfig = getStorageConfig("reports", "")
     JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig, ${withConChap.count()}", None, INFO)
 
     val df = List(FinalReportV2("","id","","","","","","","","","test-slug","ChapterLevel"))
