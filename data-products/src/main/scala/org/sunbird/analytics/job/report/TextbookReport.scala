@@ -159,7 +159,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
 
     val storageConfig = getStorageConfig("reports", "")
-    JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig, ${withConChap.count()}", None, INFO)
+    JobLogger.log(s"VDNMetricsJob: saving to blob $storageConfig, ${withConChap.count()}, ${withCon.count()}", None, INFO)
 
 
     val df = List(FinalReportV2("","id","","","","","","","","","test-slug","ChapterLevel"))
@@ -180,10 +180,24 @@ val testd = TextbookReportResult("","","","","","","","","","")
     renamedDf.saveToBlobStore(storageConfig, "json", "",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
-    withConChap.saveToBlobStore(storageConfig, "csv", "ChapterLevel",
-      Option(Map("header" -> "true")), None)
-    withConChap.saveToBlobStore(storageConfig, "json", "ChapterLevel",
-      Option(Map("header" -> "true")), None)
+    val fieldsList2 = withConChap.columns
+    val filteredDf2 = df.select(fieldsList2.head, fieldsList2.tail: _*)
+    val renamedDf2 = filteredDf2.select(filteredDf2.columns.map(c => filteredDf2.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+
+    renamedDf2.saveToBlobStore(storageConfig, "csv", "",
+      Option(Map("header" -> "true")), Option(List("slug","reportName")))
+    renamedDf2.saveToBlobStore(storageConfig, "json", "",
+      Option(Map("header" -> "true")), Option(List("slug","reportName")))
+
+
+    val fieldsList3 = withCon.columns
+    val filteredDf3 = df.select(fieldsList3.head, fieldsList3.tail: _*)
+    val renamedDf3 = filteredDf3.select(filteredDf3.columns.map(c => filteredDf3.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+
+    renamedDf3.saveToBlobStore(storageConfig, "csv", "",
+      Option(Map("header" -> "true")), Option(List("slug","reportName")))
+    renamedDf3.saveToBlobStore(storageConfig, "json", "",
+      Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
 //    reportConfig.output.map { f =>
 //      val reportConf = reportconfigMap.asInstanceOf[Map[String, AnyRef]]
