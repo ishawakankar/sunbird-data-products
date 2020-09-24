@@ -163,7 +163,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
 
     val df = List(FinalReportV2("","id","","","","","","","","","test-slug","ChapterLevel"))
       .toDF()
-      df.saveToBlobStore(storageConfig, "csv", null,
+      df.saveToBlobStore(storageConfig, "csv", "",
         Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
     withConChap.saveToBlobStore(storageConfig, "csv", "ChapterLevel",
