@@ -246,7 +246,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
         textbookReport = report :: textbookReport
       }
 
-      if(units.depth!=0 && units.contentType.getOrElse("").nonEmpty) {
+      if(units.depth!=0 && units.contentType.getOrElse("").nonEmpty && units.contentType.getOrElse("")!="TextBookUnit") {
         contentData = TestContentdata(textbookInfo.identifier,l1identifier, units.contentType.get) :: contentData
       }
 
