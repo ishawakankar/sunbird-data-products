@@ -132,7 +132,7 @@ val testd = TextbookReportResult("","","","","","","","","","")
       .pivot(concat(lit("Number of "), col("contentType"))).agg(count("identifier"))
 
     val withCon = report.join(contDfTb, Seq("identifier"),"inner")
-      .drop("identifier","channel","id","chapters","l1identifier")
+      .drop("identifier","channel","id","chapters","l1identifier").distinct()
       .orderBy('medium,split(split('grade,",")(0)," ")(1).cast("int"),'subject,'name)
 
     val withConChap = report.join(contDfchap, Seq("identifier","l1identifier"),"inner")
