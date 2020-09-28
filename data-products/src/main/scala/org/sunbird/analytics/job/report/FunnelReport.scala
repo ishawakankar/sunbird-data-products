@@ -23,7 +23,7 @@ import org.sunbird.analytics.model.report.VDNMetricsModel.{generateReport, getTe
 import org.sunbird.analytics.model.report.{ContentDetails, TenantInfo, TestContentdata, TextbookHierarchy, TextbookReportResult}
 import org.sunbird.analytics.util.{CourseUtils, TextBookUtils}
 
-case class ProgramData(program_id: String, name: String, slug: String, channel: String,
+case class ProgramData(program_id: String, name: String, rootorg_id: String, channel: String,
                        status: String, startdate: String, enddate: String)
 case class NominationData(id: String, program_id: String, user_id: String,
                           status: String)
@@ -50,7 +50,7 @@ case class ContentDataV2(program_id: String,approvedContributions: Int,rejectedC
 case class FunnelResult(program_id:String, reportDate: String, projectName: String, noOfUsers: String, initiatedNominations: String,
                         rejectedNominations: String, pendingNominations: String, acceptedNominations: String,
                         noOfContributors: String, noOfContributions: String, pendingContributions: String,
-                        approvedContributions: String, slug: String)
+                        approvedContributions: String, rootid: String)
 case class VisitorResult(date: String, visitors: String, slug: String, reportName: String)
 case class DruidTextbookData(visitors: Int)
 
@@ -116,6 +116,8 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     val reportDate = DateTimeFormat.forPattern("dd-MM-yyyy").print(DateTime.now())
 
+    val tenantInfo = getTenantInfo(RestUtil).toDF()
+
     val data = programData.join(rdd)
     var druidData = List[ProgramVisitors]()
     val druidQuery = JSONUtils.serialize(config("druidConfig"))
@@ -126,8 +128,13 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
         druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate,0) :: druidData
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
-          datav2._4.toString,f._2._1.slug)
+          datav2._4.toString,f._2._1.rootorg_id)
       }).toDF()
+
+      val df=report.join(tenantInfo,report.col("rootid")===tenantInfo.col("id"),"left")
+        .drop("id","rootid")
+
+    JobLogger.log(s"FunnelReport: tenant info ${df.count()} : ${report.count()}", None, INFO)
 
 //    val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
 //    val funnelResult = FunnelResult("","","","","","","","","","","","","Unknown")
@@ -159,7 +166,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
     }).toDF().na.fill(0)
 
-    val funnelReport=report.join(visitorData,Seq("program_id"),"left")
+    val funnelReport=df.join(visitorData,Seq("program_id"),"left")
       .drop("startdate","enddate","program_id","noOfUsers")
 
     val reportconfigMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
@@ -170,7 +177,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val renamedDf = filteredDf.select(filteredDf.columns.map(c => filteredDf.col(c).as(labelsLookup.getOrElse(c, c))): _*)
       .withColumn("reportName",lit("FunnelReport"))
 
-//    JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
+    JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
 
     val storageConfig = getStorageConfig("reports", "")
     renamedDf.saveToBlobStore(storageConfig, "csv", "",
