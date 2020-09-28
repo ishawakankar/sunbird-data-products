@@ -121,6 +121,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val druidQuery = JSONUtils.serialize(config("druidConfig"))
     val report=data
       .filter(f=> null != f._2._1.status && f._2._1.status.equalsIgnoreCase("Live"))
+      .collect().toList
       .map(f => {
         val datav2 = getESData(f._2._1.program_id)
         val query = getDruidQuery(druidQuery,f._2._1.program_id,s"${f._2._1.startdate.split(" ")(0)}T00:00:00+00:00/${f._2._1.enddate.split(" ")(0)}T00:00:00+00:00")
