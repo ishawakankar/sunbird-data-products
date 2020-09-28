@@ -169,7 +169,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
               val data = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
               val noOfVisitors = if(data.nonEmpty) data.head.visitors else 0
-      ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
+      ProgramVisitors(f.program_id,f.startdate,f.enddate,0)
     }).toDF().na.fill(0)
 
     val funnelReport=df.join(visitorData,Seq("program_id"),"left")
