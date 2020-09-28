@@ -116,7 +116,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     val reportDate = DateTimeFormat.forPattern("dd-MM-yyyy").print(DateTime.now())
 
-    val tenantInfo = getTenantInfo(RestUtil).toDF()
+    val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
 
     val data = programData.join(rdd)
     var druidData = List[ProgramVisitors]()
@@ -129,10 +129,16 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
           datav2._4.toString,f._2._1.rootorg_id)
-      }).toDF()
+      }).map(f=>(f.rootid,f))
 
-      val df=report.join(tenantInfo,report.col("rootid")===tenantInfo.col("id"),"left")
-        .drop("id","rootid")
+//      val df=report.join(tenantInfo,report.col("rootid")===tenantInfo.col("id"),"left")
+//        .drop("id","rootid")
+    val df = report.join(tenantInfo).map(f=>
+  FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
+            f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
+            f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
+            f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
+            f._2._2.slug)).toDF()
 
     JobLogger.log(s"FunnelReport: tenant info ${df.count()} : ${report.count()}", None, INFO)
 
