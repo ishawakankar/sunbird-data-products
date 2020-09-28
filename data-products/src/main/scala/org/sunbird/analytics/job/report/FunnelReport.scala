@@ -140,15 +140,15 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
               val data = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
               val noOfVisitors = if(data.nonEmpty) data.head.visitors else 0
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
-    }).toDF()
+    }).toDF().na.fill(0)
 
     val funnelReport=report.join(visitorData,Seq("program_id"),"left")
       .drop("startdate","enddate","program_id","noOfUsers")
 
     JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
 
-    val storageConfig = getStorageConfig("reports", "funnel")
-    funnelReport.saveToBlobStore(storageConfig, "csv", "funnel",
+    val storageConfig = getStorageConfig("reports", "")
+    funnelReport.saveToBlobStore(storageConfig, "csv", "",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
     //    val druidVisitorQuery = druidQuery
