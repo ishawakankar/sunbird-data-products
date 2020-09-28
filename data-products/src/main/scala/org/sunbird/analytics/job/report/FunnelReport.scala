@@ -47,7 +47,7 @@ case class FunnelResult(program_id:String, reportDate: String, projectName: Stri
                         noOfContributors: String, noOfContributions: String, pendingContributions: String,
                         approvedContributions: String, slug: String, reportName: String)
 case class VisitorResult(date: String, visitors: String, slug: String, reportName: String)
-case class DruidTextbookData(program_id:String, visitors: Int)
+case class DruidTextbookData(visitors: Int)
 
 object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
@@ -80,11 +80,11 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       .set("spark.cassandra.input.consistency.level", readConsistencyLevel)
       .set("spark.sql.caseSensitive", AppConf.getConfig(key = "spark.sql.caseSensitive"))
     val spark: SparkSession = SparkSession.builder.config(sparkConf).getOrCreate()
-    getPostgresData(spark)
+    getPostgresData(spark,configMap)
 
   }
 
-  def getPostgresData(spark: SparkSession)(implicit sc: SparkContext, fc: FrameworkContext): Unit = {
+  def getPostgresData(spark: SparkSession, config: Map[String,AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): Unit = {
     implicit val sqlContext = new SQLContext(spark.sparkContext)
     import sqlContext.implicits._
 
@@ -118,18 +118,22 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val reportDate = DateTimeFormat.forPattern("dd-MM-yyyy").print(DateTime.now())
 
     val data = programData.join(rdd)
+    val druidQuery = JSONUtils.serialize(config("druidConfig"))
     val report=data
       .filter(f=> null != f._2._1.status && f._2._1.status.equalsIgnoreCase("Live"))
       .map(f => {
         val datav2 = getESData(f._2._1.program_id)
-        FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
+        val query = getDruidQuery(druidQuery,f._2._1.program_id,s"${f._2._1.startdate.split(" ")(0)}T00:00:00+00:00/${f._2._1.enddate.split(" ")(0)}T00:00:00+00:00")
+        val data = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
+        val noOfVisitors = if(data.nonEmpty) data.head.visitors else 0
+        FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,noOfVisitors.toString,f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,f._2._2.contributors,datav2._1.toString,datav2._2.toString,
           datav2._3.toString,f._2._1.slug,"FunnelReport")
       })
       .toDF().na.fill("Unknown", Seq("slug"))
 
-    val storageConfig = getStorageConfig("reports", "funnel")
-    report.saveToBlobStore(storageConfig, "csv", "funnel",
+    val storageConfig = getStorageConfig("reports", "")
+    report.saveToBlobStore(storageConfig, "csv", "",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
     //    val druidVisitorQuery = druidQuery
@@ -155,6 +159,22 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     //    programData.map(f=>f._2).toDF().show
     //    nominationData.map(f=>f._2).toDF().show
+  }
+
+  def getDruidQuery(query: String, programId: String, interval: String): DruidQueryModel = {
+    val mapQuery = JSONUtils.deserialize[Map[String,AnyRef]](query)
+    val filters = JSONUtils.deserialize[List[Map[String, AnyRef]]](JSONUtils.serialize(mapQuery("filters")))
+    val updatedFilters = filters.map(f=> {
+      f map {
+        case ("value","program_id") => "value" -> programId
+        case x => x
+      }
+    })
+    val finalMap = mapQuery.updated("filters",updatedFilters) map {
+      case ("intervals","startdate/enddate") => "intervals" -> interval
+      case x => x
+    }
+    JSONUtils.deserialize[DruidQueryModel](JSONUtils.serialize(finalMap))
   }
 
   def getESData(programId: String): (Int,Int,Int) = {
