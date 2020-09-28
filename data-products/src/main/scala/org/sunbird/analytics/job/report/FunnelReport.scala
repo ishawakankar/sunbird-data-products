@@ -23,18 +23,22 @@ import org.sunbird.analytics.model.report.VDNMetricsModel.{generateReport, getTe
 import org.sunbird.analytics.model.report.{ContentDetails, TenantInfo, TestContentdata, TextbookHierarchy, TextbookReportResult}
 import org.sunbird.analytics.util.{CourseUtils, TextBookUtils}
 
-case class ProgramData(program_id: String, name: String, slug: String, channel: String,
+case class ProgramData(program_id: String, name: String, rootorg_id: String, channel: String,
                        status: String, startdate: String, enddate: String)
 case class NominationData(id: String, program_id: String, user_id: String,
                           status: String)
 case class NominationDataV2(program_id: String, Initiated : String, Pending: String,
-                            Rejected: String, Approved: String, contributors: String)
+                            Rejected: String, Approved: String)
 
 case class ProgramDataV2(program_id: String, name: String, slug: String,
                          channel: String, status: String, noOfUsers: Int)
 case class ProgramVisitors(program_id:String, startdate:String,enddate:String,visitors:Int)
 
 case class ContentES(result: ContentResultData, responseCode: String)
+case class ContentES2(result: ContentResultData2, responseCode: String)
+case class ContentResultData2(facets: List[ContentDataV4], count: Int)
+case class ContentDataV4(values:List[ContributionData])
+case class ContributionData(name:String,count:Int)
 //case class ContentResultData(count: Int)
 case class ContentResultData(content: List[ContentDataV3], count: Int)
 case class ContentDataV3(acceptedContents: List[String],rejectedContents: List[String])
@@ -93,26 +97,20 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val programData = spark.read.jdbc(url, programTable, connProperties).as[ProgramData](encoder).rdd
       .map(f => (f.program_id,f))
 
-    //    val druidQuery = ""
-    //    val druidData = DruidDataFetcher.getDruidData(JSONUtils.deserialize[DruidQueryModel](druidQuery))
-
-    //    val visitorData = druidData.map(f=>JSONUtils.deserialize[DruidTextbookData](f))
-    //    val projectData = visitorData.map(f=> (f.program_id,f)).join(programData).map(f=> ProgramDataV2(f._2._2.program_id,
-    //    f._2._2.name,f._2._2.slug,f._2._2.channel,f._2._2.status,f._2._1.visitors))
-    //      .map(f=>(f.program_id,f))
 
     val encoders = Encoders.product[NominationDataV2]
     val nominationData = spark.read.jdbc(url, nominationTable, connProperties)
 
-    val contributors = nominationData.groupBy("program_id")
-      .agg(countDistinct("createdby").alias("contributors"))
+//    val contributors = nominationData.groupBy("program_id")
+//      .agg(countDistinct("createdby").alias("contributors"))
 
     val nominations = nominationData.groupBy("program_id")
       .pivot(col("status"), Seq("Initiated","Pending","Rejected","Approved"))
       .agg(count("program_id"))
       .na.fill(0)
 
-    val rdd=contributors.join(nominations, Seq("program_id"),"inner")
+//    val rdd=contributors.join(nominations, Seq("program_id"),"inner")
+    val rdd=nominations
       .as[NominationDataV2](encoders).rdd
       .map(f => (f.program_id,f))
 
@@ -126,14 +124,21 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       .map(f => {
         val datav2 = getESData(f._2._1.program_id)
         druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate,0) :: druidData
-//        val query = getDruidQuery(druidQuery,f._2._1.program_id,s"${f._2._1.startdate.split(" ")(0)}T00:00:00+00:00/${f._2._1.enddate.split(" ")(0)}T00:00:00+00:00")
-//        val data = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
-//        val noOfVisitors = if(data.nonEmpty) data.head.visitors else 0
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
-          f._2._2.Pending,f._2._2.Approved,f._2._2.contributors,datav2._1.toString,datav2._2.toString,
-          datav2._3.toString,f._2._1.slug)
-      })
-      .toDF().na.fill("Unknown", Seq("slug"))
+          f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
+          datav2._4.toString,f._2._1.rootorg_id)
+      }).map(f=>(f.slug,f))
+
+    val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
+    val funnelResult = FunnelResult("","","","","","","","","","","","","Unknown")
+    val finalDf=report.fullOuterJoin(tenantInfo).map(f=>{
+      FunnelResult(f._2._1.getOrElse(funnelResult).program_id,f._2._1.getOrElse(funnelResult).reportDate,f._2._1.getOrElse(funnelResult).projectName,
+        f._2._1.getOrElse(funnelResult).noOfUsers,f._2._1.getOrElse(funnelResult).initiatedNominations,f._2._1.getOrElse(funnelResult).rejectedNominations,
+        f._2._1.getOrElse(funnelResult).pendingNominations,f._2._1.getOrElse(funnelResult).acceptedNominations,f._2._1.getOrElse(funnelResult).noOfContributors,
+        f._2._1.getOrElse(funnelResult).noOfContributions,f._2._1.getOrElse(funnelResult).pendingContributions,f._2._1.getOrElse(funnelResult).approvedContributions,f._2._2.getOrElse(TenantInfo("","Unknown")).slug)
+    }).toDF()
+
+//      .toDF().na.fill("Unknown", Seq("slug"))
 //      .drop("program_id")
     val visitorData = druidData.map(f => {
       val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
@@ -142,7 +147,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
     }).toDF().na.fill(0)
 
-    val funnelReport=report.join(visitorData,Seq("program_id"),"left")
+    val funnelReport=finalDf.join(visitorData,Seq("program_id"),"left")
       .drop("startdate","enddate","program_id","noOfUsers")
 
     val reportconfigMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
@@ -200,7 +205,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     JSONUtils.deserialize[DruidQueryModel](JSONUtils.serialize(finalMap))
   }
 
-  def getESData(programId: String): (Int,Int,Int) = {
+  def getESData(programId: String): (Int,Int,Int,Int) = {
     val url = AppConf.getConfig("dock.service.search.url")
 
     val contributionRequest = s"""{
@@ -215,11 +220,18 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
                                  |        "not_exists": [
                                  |            "sampleContent"
                                  |        ],
+                                 |        "facets":["createdBy"],
                                  |        "limit":0
                                  |    }
                                  |}""".stripMargin
-    val contributionResponse = RestUtil.post[ContentES](url,contributionRequest)
-    val totalContributions = if(null != contributionResponse && contributionResponse.responseCode.equalsIgnoreCase("OK")) contributionResponse.result.count else 0
+    val contributionResponse = RestUtil.post[ContentES2](url,contributionRequest)
+    val contributionResponses =if(null != contributionResponse && contributionResponse.responseCode.equalsIgnoreCase("OK") && contributionResponse.result.count>0) {
+      contributionResponse.result.facets
+    } else List()
+    val totalContributors = contributionResponses.filter(p => null!=p.values).flatMap(f=>f.values).length
+    val totalContributions=contributionResponses.filter(p => null!=p.values).flatMap(f=> f.values).map(f=>f.count).sum
+
+//    val totalContributions = if(null != contributionResponse && contributionResponse.responseCode.equalsIgnoreCase("OK")) contributionResponse.result.count else 0
 
     val tbRequest = s"""{
                        |	"request": {
@@ -243,7 +255,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val rejectedContents = contentData.filter(p => null!=p.rejectedContents).flatMap(f=>f.rejectedContents).length
     val contents = acceptedContents+rejectedContents
 
-    (totalContributions,totalContributions-contents,acceptedContents)
+    (totalContributors,totalContributions,totalContributions-contents,acceptedContents)
 
   }
 
