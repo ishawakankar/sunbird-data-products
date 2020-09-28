@@ -246,7 +246,7 @@ object TextbookReport extends optional.Application with IJob with BaseReportsJob
         textbookReport = report :: textbookReport
       }
 
-      if(units.depth!=0 && units.contentType.getOrElse("").nonEmpty && units.contentType.getOrElse("").equalsIgnoreCase("TextBookUnit")) {
+      if(units.depth!=0 && units.contentType.getOrElse("").nonEmpty && !units.contentType.getOrElse("").equalsIgnoreCase("TextBookUnit")) {
         contentData = TestContentdata(textbookInfo.identifier,l1identifier, units.contentType.get) :: contentData
       }
 
