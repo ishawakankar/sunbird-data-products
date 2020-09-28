@@ -145,8 +145,10 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val funnelReport=visitorData.join(report,Seq("program_id"),"inner")
       .drop("startdate","enddate","program_id","noOfUsers")
 
-    val storageConfig = getStorageConfig("reports", "")
-    funnelReport.saveToBlobStore(storageConfig, "csv", "",
+    JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}", None, INFO)
+
+    val storageConfig = getStorageConfig("reports", "funnel")
+    funnelReport.saveToBlobStore(storageConfig, "csv", "funnel",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
     //    val druidVisitorQuery = druidQuery
