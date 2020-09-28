@@ -68,8 +68,8 @@ trait BaseReportsJob {
   }
 
   def setReportsStorageConfiguration(sc: SparkContext) {
-    val reportsStorageAccountKey = AppConf.getConfig("reports_storage_key")
-    val reportsStorageAccountSecret = AppConf.getConfig("reports_storage_secret")
+    val reportsStorageAccountKey = AppConf.getConfig("dock_reports_account_name")
+    val reportsStorageAccountSecret = AppConf.getConfig("dock_reports_account_key")
     if (reportsStorageAccountKey != null && !reportsStorageAccountSecret.isEmpty) {
       sc.hadoopConfiguration.set("fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem")
       sc.hadoopConfiguration.set("fs.azure.account.key." + reportsStorageAccountKey + ".blob.core.windows.net", reportsStorageAccountSecret)

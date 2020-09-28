@@ -46,7 +46,7 @@ case class ContentDataV2(program_id: String,approvedContributions: Int,rejectedC
 case class FunnelResult(program_id:String, reportDate: String, projectName: String, noOfUsers: String, initiatedNominations: String,
                         rejectedNominations: String, pendingNominations: String, acceptedNominations: String,
                         noOfContributors: String, noOfContributions: String, pendingContributions: String,
-                        approvedContributions: String, slug: String, reportName: String)
+                        approvedContributions: String, slug: String)
 case class VisitorResult(date: String, visitors: String, slug: String, reportName: String)
 case class DruidTextbookData(visitors: Int)
 
@@ -131,7 +131,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 //        val noOfVisitors = if(data.nonEmpty) data.head.visitors else 0
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,f._2._2.contributors,datav2._1.toString,datav2._2.toString,
-          datav2._3.toString,f._2._1.slug,"FunnelReport")
+          datav2._3.toString,f._2._1.slug)
       })
       .toDF().na.fill("Unknown", Seq("slug"))
 //      .drop("program_id")
@@ -145,10 +145,18 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val funnelReport=report.join(visitorData,Seq("program_id"),"left")
       .drop("startdate","enddate","program_id","noOfUsers")
 
+    val reportconfigMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
+    val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(reportconfigMap))
+    val labelsLookup = reportConfig.labels ++ Map("date" -> "Date")
+    val fieldsList = funnelReport.columns
+    val filteredDf = funnelReport.select(fieldsList.head, fieldsList.tail: _*)
+    val renamedDf = filteredDf.select(filteredDf.columns.map(c => filteredDf.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+      .withColumn("reportName",lit("FunnelReport"))
+
     JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
 
     val storageConfig = getStorageConfig("reports", "")
-    funnelReport.saveToBlobStore(storageConfig, "csv", "",
+    renamedDf.saveToBlobStore(storageConfig, "csv", "",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
 
     //    val druidVisitorQuery = druidQuery
