@@ -23,7 +23,7 @@ import org.sunbird.analytics.model.report.VDNMetricsModel.{generateReport, getTe
 import org.sunbird.analytics.model.report.{ContentDetails, TenantInfo, TestContentdata, TextbookHierarchy, TextbookReportResult}
 import org.sunbird.analytics.util.{CourseUtils, TextBookUtils}
 
-case class ProgramData(program_id: String, name: String, rootorg_id: String, channel: String,
+case class ProgramData(program_id: String, name: String, slug: String, channel: String,
                        status: String, startdate: String, enddate: String)
 case class NominationData(id: String, program_id: String, user_id: String,
                           status: String)
@@ -126,29 +126,29 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
         druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate,0) :: druidData
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
-          datav2._4.toString,f._2._1.rootorg_id)
-      }).map(f=>(f.slug,f))
+          datav2._4.toString,f._2._1.slug)
+      }).toDF()
 
-    val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
-    val funnelResult = FunnelResult("","","","","","","","","","","","","Unknown")
-
-    val finalDf=report.join(tenantInfo).map(f=>{
-      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
-        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
-        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
-        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
-        f._2._2.slug)
-    }).toDF()
-
-    val testd = report.leftOuterJoin(tenantInfo).map(f=>{
-      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
-        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
-        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
-        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
-        f._2._2.getOrElse(TenantInfo("","Unknown")).slug)
-    })
-
-    JobLogger.log(s"FunnelReport: Tenant info ${finalDf.count()}, ${report.count()}:${tenantInfo.count()}:::${testd.count()}", None, INFO)
+//    val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
+//    val funnelResult = FunnelResult("","","","","","","","","","","","","Unknown")
+//
+//    val finalDf=report.join(tenantInfo).map(f=>{
+//      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
+//        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
+//        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
+//        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
+//        f._2._2.slug)
+//    }).toDF()
+//
+//    val testd = report.leftOuterJoin(tenantInfo).map(f=>{
+//      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
+//        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
+//        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
+//        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
+//        f._2._2.getOrElse(TenantInfo("","Unknown")).slug)
+//    })
+//
+//    JobLogger.log(s"FunnelReport: Tenant info ${finalDf.count()}, ${report.count()}:${tenantInfo.count()}:::${testd.count()}", None, INFO)
 
 //      .toDF().na.fill("Unknown", Seq("slug"))
 //      .drop("program_id")
@@ -159,7 +159,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
     }).toDF().na.fill(0)
 
-    val funnelReport=finalDf.join(visitorData,Seq("program_id"),"left")
+    val funnelReport=report.join(visitorData,Seq("program_id"),"left")
       .drop("startdate","enddate","program_id","noOfUsers")
 
     val reportconfigMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
@@ -170,7 +170,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val renamedDf = filteredDf.select(filteredDf.columns.map(c => filteredDf.col(c).as(labelsLookup.getOrElse(c, c))): _*)
       .withColumn("reportName",lit("FunnelReport"))
 
-    JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
+//    JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
 
     val storageConfig = getStorageConfig("reports", "")
     renamedDf.saveToBlobStore(storageConfig, "csv", "",
