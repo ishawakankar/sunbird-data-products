@@ -97,7 +97,6 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val programData = spark.read.jdbc(url, programTable, connProperties).as[ProgramData](encoder).rdd
       .map(f => (f.program_id,f))
 
-
     val encoders = Encoders.product[NominationDataV2]
     val nominationData = spark.read.jdbc(url, nominationTable, connProperties)
 
@@ -122,7 +121,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     var druidData = List[ProgramVisitors]()
     val druidQuery = JSONUtils.serialize(config("druidConfig"))
     val report=data
-      .filter(f=> null != f._2._1.status && f._2._1.status.equalsIgnoreCase("Live"))
+      .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted")))
       .map(f => {
         val datav2 = getESData(f._2._1.program_id)
         druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate,0) :: druidData
