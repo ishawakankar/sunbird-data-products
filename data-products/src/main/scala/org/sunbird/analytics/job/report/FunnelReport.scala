@@ -172,8 +172,11 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       ProgramVisitors(f.program_id,f.startdate,f.enddate,0)
     }).toDF().na.fill(0)
 
-    val funnelReport=df.join(visitorData,Seq("program_id"),"left")
-      .drop("startdate","enddate","program_id","noOfUsers")
+    val funnelReport=df
+      .drop("program_id","noOfUsers")
+//      .join(visitorData,Seq("program_id"),"left")
+//      .drop("startdate","enddate","program_id","noOfUsers","visitors")
+      .withColumn("visitors",lit("0"))
 
     val reportconfigMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
     val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(reportconfigMap))
