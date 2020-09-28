@@ -131,11 +131,12 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
     val funnelResult = FunnelResult("","","","","","","","","","","","","Unknown")
-    val finalDf=report.fullOuterJoin(tenantInfo).map(f=>{
-      FunnelResult(f._2._1.getOrElse(funnelResult).program_id,f._2._1.getOrElse(funnelResult).reportDate,f._2._1.getOrElse(funnelResult).projectName,
-        f._2._1.getOrElse(funnelResult).noOfUsers,f._2._1.getOrElse(funnelResult).initiatedNominations,f._2._1.getOrElse(funnelResult).rejectedNominations,
-        f._2._1.getOrElse(funnelResult).pendingNominations,f._2._1.getOrElse(funnelResult).acceptedNominations,f._2._1.getOrElse(funnelResult).noOfContributors,
-        f._2._1.getOrElse(funnelResult).noOfContributions,f._2._1.getOrElse(funnelResult).pendingContributions,f._2._1.getOrElse(funnelResult).approvedContributions,f._2._2.getOrElse(TenantInfo("","Unknown")).slug)
+    val finalDf=report.leftOuterJoin(tenantInfo).map(f=>{
+      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
+        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
+        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
+        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
+        f._2._2.getOrElse(TenantInfo("","Unknown")).slug)
     }).toDF()
 
 //      .toDF().na.fill("Unknown", Seq("slug"))
