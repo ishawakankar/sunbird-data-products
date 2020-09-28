@@ -142,7 +142,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
     }).toDF()
 
-    val funnelReport=visitorData.join(report,Seq("program_id"),"left")
+    val funnelReport=report.join(visitorData,Seq("program_id"),"left")
       .drop("startdate","enddate","program_id","noOfUsers")
 
     JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
