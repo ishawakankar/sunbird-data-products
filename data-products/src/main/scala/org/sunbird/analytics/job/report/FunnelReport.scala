@@ -50,7 +50,7 @@ case class ContentDataV2(program_id: String,approvedContributions: Int,rejectedC
 case class FunnelResult(program_id:String, reportDate: String, projectName: String, noOfUsers: String, initiatedNominations: String,
                         rejectedNominations: String, pendingNominations: String, acceptedNominations: String,
                         noOfContributors: String, noOfContributions: String, pendingContributions: String,
-                        approvedContributions: String, rootid: String)
+                        approvedContributions: String, slug: String)
 case class VisitorResult(date: String, visitors: String, slug: String, reportName: String)
 case class DruidTextbookData(visitors: Int)
 
@@ -129,7 +129,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
           datav2._4.toString,f._2._1.rootorg_id)
-      }).map(f=>(f.rootid,f))
+      }).map(f=>(f.slug,f))
 
 //      val df=report.join(tenantInfo,report.col("rootid")===tenantInfo.col("id"),"left")
 //        .drop("id","rootid")
