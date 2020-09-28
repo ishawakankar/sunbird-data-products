@@ -131,13 +131,24 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
     val funnelResult = FunnelResult("","","","","","","","","","","","","Unknown")
-    val finalDf=report.leftOuterJoin(tenantInfo).map(f=>{
+
+    val finalDf=report.join(tenantInfo).map(f=>{
+      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
+        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
+        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
+        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
+        f._2._2.slug)
+    }).toDF()
+
+    val testd = report.leftOuterJoin(tenantInfo).map(f=>{
       FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
         f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
         f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
         f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
         f._2._2.getOrElse(TenantInfo("","Unknown")).slug)
-    }).toDF()
+    })
+
+    JobLogger.log(s"FunnelReport: Tenant info ${finalDf.count()}, ${report.count()}:${tenantInfo.count()}:::${testd.count()}", None, INFO)
 
 //      .toDF().na.fill("Unknown", Seq("slug"))
 //      .drop("program_id")
