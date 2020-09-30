@@ -92,8 +92,10 @@ object VDNMetricsJob extends optional.Application with IJob with BaseReportsJob 
     val contentdf = contentReportData.toDF()
     val contentChapter = contentdf.groupBy("identifier","l1identifier")
       .pivot(concat(lit("Number of "), col("contentType"))).agg(count("l1identifier"))
+      .na.fill("0")
     val contentTb = contentdf.groupBy("identifier")
       .pivot(concat(lit("Number of "), col("contentType"))).agg(count("identifier"))
+      .na.fill("0")
 //    report.show
 //    contentTb.show
 //    contentChapter.show

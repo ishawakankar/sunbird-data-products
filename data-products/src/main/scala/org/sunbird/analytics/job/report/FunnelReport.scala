@@ -1,52 +1,33 @@
 package org.sunbird.analytics.job.report
 
-import java.util.Properties
-
+import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.{Encoder, Encoders, Row, SQLContext, SparkSession}
-import org.apache.spark.sql.functions.{approx_count_distinct, broadcast, col, concat, count, countDistinct, lit, sum}
-import org.apache.spark.storage.StorageLevel
+import org.apache.spark.sql.functions.{col, count, lit}
+import org.apache.spark.sql.{DataFrame, Encoders, SQLContext, SparkSession}
 import org.ekstep.analytics.framework.Level.INFO
+import org.ekstep.analytics.framework.{DruidQueryModel, FrameworkContext, IJob, JobConfig, JobContext, Level, StorageConfig}
 import org.ekstep.analytics.framework.conf.AppConf
 import org.ekstep.analytics.framework.fetcher.DruidDataFetcher
 import org.ekstep.analytics.framework.util.DatasetUtil.extensions
-import org.ekstep.analytics.framework.util.{CommonUtil, JSONUtils, JobLogger, RestUtil}
-import org.ekstep.analytics.framework.{DruidQueryModel, FrameworkContext, IJob, JobConfig, JobContext, JobDriver, StorageConfig}
+import org.ekstep.analytics.framework.util.{CommonUtil, HTTPClient, JSONUtils, JobLogger, RestUtil}
 import org.ekstep.analytics.model.ReportConfig
 import org.ekstep.analytics.util.Constants
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
-import org.sunbird.analytics.model
-import org.sunbird.analytics.model.report.ETBMetricsModel.updateReportPath
-import org.sunbird.analytics.model.report.VDNMetricsModel.{generateReport, getTenantInfo}
-import org.sunbird.analytics.model.report.{ContentDetails, TenantInfo, TestContentdata, TextbookHierarchy, TextbookReportResult}
-import org.sunbird.analytics.util.{CourseUtils, TextBookUtils}
+import org.sunbird.analytics.model.report.{TenantInfo, TenantResponse}
 
 case class ProgramData(program_id: String, name: String, rootorg_id: String, channel: String,
                        status: String, startdate: String, enddate: String)
-case class NominationData(id: String, program_id: String, user_id: String,
-                          status: String)
-case class NominationDataV2(program_id: String, Initiated : String, Pending: String,
-                            Rejected: String, Approved: String)
-
-case class ProgramDataV2(program_id: String, name: String, slug: String,
-                         channel: String, status: String, noOfUsers: Int)
-case class ProgramVisitors(program_id:String, startdate:String,enddate:String,visitors:Int)
-
-case class ContentES(result: ContentResultData, responseCode: String)
-case class ContentES2(result: ContentResultData2, responseCode: String)
-case class ContentResultData2(facets: List[ContentDataV4], count: Int)
-case class ContentDataV4(values:List[ContributionData])
+case class NominationData(program_id: String, Initiated : String, Pending: String,
+                          Rejected: String, Approved: String)
+case class ContributionResult(result: ContributionResultData, responseCode: String)
+case class ContributionResultData(content: List[Contributions], count: Int)
+case class Contributions(acceptedContents: List[String],rejectedContents: List[String])
+case class TotalContributionResult(result: TotalContributionData, responseCode: String)
+case class TotalContributionData(facets: List[TotalContributions], count: Int)
+case class TotalContributions(values:List[ContributionData])
 case class ContributionData(name:String,count:Int)
-//case class ContentResultData(count: Int)
-case class ContentResultData(content: List[ContentDataV3], count: Int)
-case class ContentDataV3(acceptedContents: List[String],rejectedContents: List[String])
-case class ContentValues(program_id: String,identifier: String,name: String, acceptedContents: Int,
-                         rejectedContents: Int,mvcContributions: Int)
-
-case class ContentDataV2(program_id: String,approvedContributions: Int,rejectedContents: Int,mvcContributions: Int, totalContributions: Int)
-
+case class ProgramVisitors(program_id:String, startdate:String, enddate:String, visitors:String)
 case class FunnelResult(program_id:String, reportDate: String, projectName: String, noOfUsers: String, initiatedNominations: String,
                         rejectedNominations: String, pendingNominations: String, acceptedNominations: String,
                         noOfContributors: String, noOfContributions: String, pendingContributions: String,
@@ -60,18 +41,13 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
   val db = AppConf.getConfig("postgres.db")
   val url = AppConf.getConfig("postgres.url") + s"$db"
   val connProperties = CommonUtil.getPostgresConnectionProps
-
-  //  val db = "device_db"
-  //  val url = "jdbc:postgresql://localhost:5432/"+ s"$db"
-  //  val connProperties = getCon()
-
   val programTable = "program"
   val nominationTable = "nomination"
 
-  def main(config: String)(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None) {
-    JobLogger.init("VDNMetricsV2")
-    JobLogger.start("VDNMetricsV2 Job Started executing", Option(Map("config" -> config, "model" -> "VDNMetricsV2")))
-
+  // $COVERAGE-OFF$ Disabling scoverage for main method
+  def main(config: String)(implicit sc: Option[SparkContext] = None, fc: Option[FrameworkContext] = None): Unit = {
+    JobLogger.init("FunnelReport")
+    JobLogger.log("Started execution - FunnelReport Job",None, Level.INFO)
     val jobConfig = JSONUtils.deserialize[JobConfig](config)
     val configMap = JSONUtils.deserialize[Map[String,AnyRef]](config)
 
@@ -85,135 +61,68 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       .set("spark.cassandra.input.consistency.level", readConsistencyLevel)
       .set("spark.sql.caseSensitive", AppConf.getConfig(key = "spark.sql.caseSensitive"))
     val spark: SparkSession = SparkSession.builder.config(sparkConf).getOrCreate()
-    getPostgresData(spark,configMap)
-
+    generateFunnelReport(spark,configMap)
   }
 
-  def getPostgresData(spark: SparkSession, config: Map[String,AnyRef])(implicit sc: SparkContext, fc: FrameworkContext): Unit = {
+  // $COVERAGE-ON$ Enabling scoverage for all other functions
+  def generateFunnelReport(spark: SparkSession, config: Map[String,AnyRef])(implicit sc: SparkContext, fc: FrameworkContext) = {
     implicit val sqlContext = new SQLContext(spark.sparkContext)
     import sqlContext.implicits._
 
-    val encoder = Encoders.product[ProgramData]
-    val programData = spark.read.jdbc(url, programTable, connProperties).as[ProgramData](encoder).rdd
+    val programEncoder = Encoders.product[ProgramData]
+    val programData = spark.read.jdbc(url, programTable, connProperties).as[ProgramData](programEncoder).rdd
       .map(f => (f.program_id,f))
 
-    val encoders = Encoders.product[NominationDataV2]
+    val nominationEncoder = Encoders.product[NominationData]
     val nominationData = spark.read.jdbc(url, nominationTable, connProperties)
-
-//    val contributors = nominationData.groupBy("program_id")
-//      .agg(countDistinct("createdby").alias("contributors"))
-
     val nominations = nominationData.groupBy("program_id")
       .pivot(col("status"), Seq("Initiated","Pending","Rejected","Approved"))
       .agg(count("program_id"))
       .na.fill(0)
-
-//    val rdd=contributors.join(nominations, Seq("program_id"),"inner")
-    val rdd=nominations
-      .as[NominationDataV2](encoders).rdd
+    val nominationRdd = nominations
+      .as[NominationData](nominationEncoder).rdd
       .map(f => (f.program_id,f))
 
     val reportDate = DateTimeFormat.forPattern("dd-MM-yyyy").print(DateTime.now())
-
     val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
 
-    val data = programData.join(rdd)
+    val data = programData.join(nominationRdd)
     var druidData = List[ProgramVisitors]()
     val druidQuery = JSONUtils.serialize(config("druidConfig"))
-    val report=data
+    val report = data
       .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted")))
       .map(f => {
-        val datav2 = getESData(f._2._1.program_id)
-        druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate,0) :: druidData
+        val datav2 = getContributionData(f._2._1.program_id)
+        druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0") :: druidData
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
           datav2._4.toString,f._2._1.rootorg_id)
       }).map(f=>(f.slug,f))
+    val funnelResult = FunnelResult("","","","","","","","","","","","","")
 
-//      val df=report.join(tenantInfo,report.col("rootid")===tenantInfo.col("id"),"left")
-//        .drop("id","rootid")
-    val df = report.join(tenantInfo).map(f=>
-  FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
-            f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
-            f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
-            f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
-            f._2._2.slug)).toDF()
-
-    JobLogger.log(s"FunnelReport: tenant info ${df.count()} : ${report.count()}", None, INFO)
-
-//    val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
-//    val funnelResult = FunnelResult("","","","","","","","","","","","","Unknown")
-//
-//    val finalDf=report.join(tenantInfo).map(f=>{
-//      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
-//        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
-//        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
-//        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
-//        f._2._2.slug)
-//    }).toDF()
-//
-//    val testd = report.leftOuterJoin(tenantInfo).map(f=>{
-//      FunnelResult(f._2._1.program_id,f._2._1.reportDate,f._2._1.projectName,
-//        f._2._1.noOfUsers,f._2._1.initiatedNominations,f._2._1.rejectedNominations,
-//        f._2._1.pendingNominations,f._2._1.acceptedNominations,f._2._1.noOfContributors,
-//        f._2._1.noOfContributions,f._2._1.pendingContributions,f._2._1.approvedContributions,
-//        f._2._2.getOrElse(TenantInfo("","Unknown")).slug)
-//    })
-//
-//    JobLogger.log(s"FunnelReport: Tenant info ${finalDf.count()}, ${report.count()}:${tenantInfo.count()}:::${testd.count()}", None, INFO)
-
-//      .toDF().na.fill("Unknown", Seq("slug"))
-//      .drop("program_id")
+    val df = report.fullOuterJoin(tenantInfo).map(f=>
+      FunnelResult(f._2._1.getOrElse(funnelResult).program_id,f._2._1.getOrElse(funnelResult).reportDate,f._2._1.getOrElse(funnelResult).projectName,
+        f._2._1.getOrElse(funnelResult).noOfUsers,f._2._1.getOrElse(funnelResult).initiatedNominations,f._2._1.getOrElse(funnelResult).rejectedNominations,
+        f._2._1.getOrElse(funnelResult).pendingNominations,f._2._1.getOrElse(funnelResult).acceptedNominations,f._2._1.getOrElse(funnelResult).noOfContributors,
+        f._2._1.getOrElse(funnelResult).noOfContributions,f._2._1.getOrElse(funnelResult).pendingContributions,f._2._1.getOrElse(funnelResult).approvedContributions,
+        f._2._2.getOrElse(TenantInfo("","Unknown")).slug)).filter(f=>f.program_id.nonEmpty).toDF()
+    JobLogger.log(s" FunnelReport Job - druidData: ${druidData.length}",None, Level.INFO)
     val visitorData = druidData.map(f => {
       val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
-              val data = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
-              val noOfVisitors = if(data.nonEmpty) data.head.visitors else 0
-      ProgramVisitors(f.program_id,f.startdate,f.enddate,0)
-    }).toDF().na.fill(0)
+      val data = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
+      val noOfVisitors = if(data.nonEmpty) data.head.visitors.toString else "0"
+      JobLogger.log(s" FunnelReport Job - noOfVisitors: $noOfVisitors",None, Level.INFO)
+      ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
+    }).toDF().na.fill("0")
+    JobLogger.log(s" FunnelReport Job - druidData: ${druidData.length}",None, Level.INFO)
+//    visitorData.show
 
-    val funnelReport=df
-      .drop("program_id","noOfUsers")
-//      .join(visitorData,Seq("program_id"),"left")
-//      .drop("startdate","enddate","program_id","noOfUsers","visitors")
-      .withColumn("visitors",lit("0"))
-
-    val reportconfigMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
-    val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(reportconfigMap))
-    val labelsLookup = reportConfig.labels ++ Map("date" -> "Date")
-    val fieldsList = funnelReport.columns
-    val filteredDf = funnelReport.select(fieldsList.head, fieldsList.tail: _*)
-    val renamedDf = filteredDf.select(filteredDf.columns.map(c => filteredDf.col(c).as(labelsLookup.getOrElse(c, c))): _*)
-      .withColumn("reportName",lit("FunnelReport"))
-
-    JobLogger.log(s"FunnelReport: Saving dataframe to blob${funnelReport.count()}, ${report.count()}:${visitorData.count()}", None, INFO)
-
+    val funnelReport = df
+      .join(visitorData,Seq("program_id"),"left")
+      .drop("startdate","enddate","program_id","noOfUsers")
     val storageConfig = getStorageConfig("reports", "")
-    renamedDf.saveToBlobStore(storageConfig, "csv", "",
-      Option(Map("header" -> "true")), Option(List("slug","reportName")))
+    saveReportToBlob(funnelReport, config, storageConfig, "FunnelReport")
 
-    //    val druidVisitorQuery = druidQuery
-    //    val druidVisitor = DruidDataFetcher.getDruidData(JSONUtils.deserialize[DruidQueryModel](druidVisitorQuery))
-
-    //    val visitorData2 = druidVisitor.map(f=>JSONUtils.deserialize[DruidTextbookData](f)).map(f=>(f.program_id,f))
-    //val visitorReport = visitorData2.join(programData).map(f=>VisitorResult(reportDate,f._2._1.visitors.toString,f._2._2.slug,"VisitorReport"))
-    //  .toDF()
-    //
-    //    visitorReport.show
-    //    report.saveToBlobStore(storageConfig,"csv", "",
-    //      Option(Map("header" -> "true")), Option(List("slug","reportName")))
-    //      .map(f=> FunnelResult(reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
-    //      f._2._2.Pending,f._2._2.Approved,f._2._2.contributors,"0","0","0",f._2._1.slug,"FunnelReport") )
-    //      .toDF().na.fill("Unknown", Seq("slug")).show(false)
-
-
-    //    val filteredData = data.filter(f=> null != f._2._1.status && f._2._1.status.equalsIgnoreCase("Live"))
-    //      .map(f=>f._2).toDF().show(false)
-
-    //    filteredData.map(f=>f._2._2.status.equals())
-    //    data.map(f=>f._2._2).groupBy(f => f.status).toDF().show
-
-    //    programData.map(f=>f._2).toDF().show
-    //    nominationData.map(f=>f._2).toDF().show
   }
 
   def getDruidQuery(query: String, programId: String, interval: String): DruidQueryModel = {
@@ -232,8 +141,8 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     JSONUtils.deserialize[DruidQueryModel](JSONUtils.serialize(finalMap))
   }
 
-  def getESData(programId: String): (Int,Int,Int,Int) = {
-    val url = AppConf.getConfig("dock.service.search.url")
+  def getContributionData(programId: String): (Int,Int,Int,Int) = {
+    val url = Constants.COMPOSITE_SEARCH_URL
 
     val contributionRequest = s"""{
                                  |    "request": {
@@ -251,14 +160,12 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
                                  |        "limit":0
                                  |    }
                                  |}""".stripMargin
-    val contributionResponse = RestUtil.post[ContentES2](url,contributionRequest)
+    val contributionResponse = RestUtil.post[TotalContributionResult](url,contributionRequest)
     val contributionResponses =if(null != contributionResponse && contributionResponse.responseCode.equalsIgnoreCase("OK") && contributionResponse.result.count>0) {
       contributionResponse.result.facets
     } else List()
     val totalContributors = contributionResponses.filter(p => null!=p.values).flatMap(f=>f.values).length
     val totalContributions=contributionResponses.filter(p => null!=p.values).flatMap(f=> f.values).map(f=>f.count).sum
-
-//    val totalContributions = if(null != contributionResponse && contributionResponse.responseCode.equalsIgnoreCase("OK")) contributionResponse.result.count else 0
 
     val tbRequest = s"""{
                        |	"request": {
@@ -273,7 +180,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
                        |       "limit": 10000
                        |     }
                        |}""".stripMargin
-    val response = RestUtil.post[ContentES](url,tbRequest)
+    val response = RestUtil.post[ContributionResult](url,tbRequest)
 
     val contentData = if(null != response && response.responseCode.equalsIgnoreCase("OK") && response.result.count>0) {
       response.result.content
@@ -286,15 +193,36 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
   }
 
-  def getCon (): Properties = {
-    //    val user = AppConf.getConfig("postgres.user")
-    //    val pass = AppConf.getConfig("postgres.password")
+  def getTenantInfo(restUtil: HTTPClient)(implicit sc: SparkContext): RDD[TenantInfo] = {
+    val url = Constants.ORG_SEARCH_URL
 
-    val connProperties = new Properties()
-    connProperties.setProperty("driver", "org.postgresql.Driver")
+    val tenantRequest = s"""{
+                           |    "params": { },
+                           |    "request":{
+                           |        "filters": {"isRootOrg":"true"},
+                           |        "offset": 0,
+                           |        "limit": 10000,
+                           |        "fields": ["id", "channel", "slug", "orgName"]
+                           |    }
+                           |}""".stripMargin
+    sc.parallelize(restUtil.post[TenantResponse](url, tenantRequest).result.response.content)
+  }
 
-    connProperties
+  def saveReportToBlob(data: DataFrame, config: Map[String,AnyRef], storageConfig: StorageConfig, reportName: String): Unit = {
+    val reportconfigMap = config("modelParams").asInstanceOf[Map[String, AnyRef]]("reportConfig")
+    val reportConfig = JSONUtils.deserialize[ReportConfig](JSONUtils.serialize(reportconfigMap))
+
+    val fieldsList = data.columns
+    val filteredDf = data.select(fieldsList.head, fieldsList.tail: _*)
+    val labelsLookup = reportConfig.labels ++ Map("date" -> "Date")
+    val renamedDf = filteredDf.select(filteredDf.columns.map(c => filteredDf.col(c).as(labelsLookup.getOrElse(c, c))): _*)
+      .withColumn("reportName",lit(reportName))
+
+    reportConfig.output.map(format => {
+      renamedDf.saveToBlobStore(storageConfig, format.`type`, "",
+        Option(Map("header" -> "true")), Option(List("slug","reportName")))
+    })
+
   }
 
 }
-
