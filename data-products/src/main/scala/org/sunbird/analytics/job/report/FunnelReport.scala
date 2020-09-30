@@ -89,11 +89,17 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val data = programData.join(nominationRdd)
     var druidData = List[ProgramVisitors]()
     val druidQuery = JSONUtils.serialize(config("druidConfig"))
+    val r1 = data
+      .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted")))
+
+
     val report = data
       .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted")))
       .map(f => {
         val datav2 = getContributionData(f._2._1.program_id)
         druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0") :: druidData
+        JobLogger.log(s" FunnelReport Job - druidData in report map: ${ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0")}  $druidData",None, Level.INFO)
+
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
           datav2._4.toString,f._2._1.rootorg_id)
@@ -115,6 +121,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
     }).toDF().na.fill("0")
     JobLogger.log(s" FunnelReport Job - druidData: ${druidData.length}",None, Level.INFO)
+    JobLogger.log(s" FunnelReport Job - filteredData:  ${r1.count()}",None, Level.INFO)
 //    visitorData.show
 
     val funnelReport = df
