@@ -23,7 +23,7 @@ case class TextbookHierarchy(channel: String, board: String, identifier: String,
 case class FinalReport(identifier: String,l1identifier: String,board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String, totalChapters: String, slug:String)
 case class TextbookResponse(l1identifier:String,board: String, medium: String, grade: String, subject: String, name: String, chapters: String, channel: String)
 
-object TBReportV2 extends optional.Application with IJob with BaseReportsJob {
+object VDNMetricsJob extends optional.Application with IJob with BaseReportsJob {
 
   implicit val className = "org.sunbird.analytics.job.VDNMetricsJob"
   val sunbirdHierarchyStore: String = AppConf.getConfig("course.metrics.cassandra.sunbirdHierarchyStore")
@@ -54,15 +54,17 @@ object TBReportV2 extends optional.Application with IJob with BaseReportsJob {
     val encoders = Encoders.product[ContentHierarchy]
     var textbookReportData = List[TextbookReportResult]()
     var contentReportData = List[ContentReportResult]()
-
+//    println("len",textbooks)
     val result = textbooks.map(textbook => {
       val textbookHierarchy = spark.read.format("org.apache.spark.sql.cassandra").options(Map("table" -> "content_hierarchy", "keyspace" -> sunbirdHierarchyStore)).load()
-      //        .where(col("identifier") === textbook.identifier)
+//      textbookHierarchy.show
+              .where(col("identifier") === textbook.identifier)
       val count = textbookHierarchy.count()
       if(count > 0) {
-        println("in coutn loop")
+//        println("in provess")
         val textbookRdd = textbookHierarchy.as[ContentHierarchy](encoders).first()
         val hierarchy = JSONUtils.deserialize[TextbookHierarchy](textbookRdd.hierarchy)
+//        println(hierarchy)
         val reportMetrics = generateReport(List(hierarchy),List(), List(),hierarchy,List(),List("","0"))
         val textbookData = reportMetrics._1
         val contentData = reportMetrics._2
@@ -70,11 +72,9 @@ object TBReportV2 extends optional.Application with IJob with BaseReportsJob {
         val report = textbookData.map(f => TextbookReportResult(textbook.identifier,f.l1identifier,textbook.board,textbook.medium,textbook.gradeLevel,textbook.subject,textbook.name,f.chapters,textbook.channel,totalChapters))
         textbookReportData = report.reverse ++ textbookReportData
         contentReportData = contentData ++ contentReportData
-        println("till end of count looop",report)
       }
       (textbookReportData,contentReportData)
     })
-    println(textbookReportData.length,contentReportData.length)
 
     val textbookReports = sc.parallelize(textbookReportData).map(f=>(f.channel,f))
     val tenantInfo = getTenantInfo(RestUtil).map(f=>(f.id,f))
@@ -82,10 +82,8 @@ object TBReportV2 extends optional.Application with IJob with BaseReportsJob {
 
     implicit val sqlContext = new SQLContext(sc)
     import sqlContext.implicits._
-
-    textbookReportData.toDF().show(false)
-    contentReportData.toDF().show(false)
-
+//    textbookReportData.toDF().show(false)
+//    contentReportData.toDF().show(false)
     val report = textbookReports.fullOuterJoin(tenantInfo).map(f => FinalReport(f._2._1.getOrElse(textbookResult).identifier,f._2._1.getOrElse(textbookResult).l1identifier,
       f._2._1.getOrElse(textbookResult).board,f._2._1.getOrElse(textbookResult).medium,f._2._1.getOrElse(textbookResult).grade,
       f._2._1.getOrElse(textbookResult).subject,f._2._1.getOrElse(textbookResult).name,f._2._1.getOrElse(textbookResult).chapters,
@@ -94,31 +92,30 @@ object TBReportV2 extends optional.Application with IJob with BaseReportsJob {
     val contentdf = contentReportData.toDF()
     val contentChapter = contentdf.groupBy("identifier","l1identifier")
       .pivot(concat(lit("Number of "), col("contentType"))).agg(count("l1identifier"))
-    contentChapter.show(false)
     val contentTb = contentdf.groupBy("identifier")
       .pivot(concat(lit("Number of "), col("contentType"))).agg(count("identifier"))
-    contentTb.show(false)
-
+//    report.show
+//    contentTb.show
+//    contentChapter.show
     val storageConfig = getStorageConfig("reports", "")
-    report.show(false)
-    val textbookReport = report.join(contentTb, Seq("identifier"),"inner")
+
+    val textbookReport = report.join(contentTb, Seq("identifier"),"left")
       .drop("identifier","channel","id","chapters","l1identifier")
       .distinct()
       .orderBy('medium,split(split('grade,",")(0)," ")(1).cast("int"),'subject,'name)
-    textbookReport.show(false)
     saveReportToBlob(textbookReport, config, storageConfig, "TextbookLevel")
-
-    val chapterReport = report.join(contentChapter, Seq("identifier","l1identifier"),"inner")
+//    textbookReport.show
+    val chapterReport = report.join(contentChapter, Seq("identifier","l1identifier"),"left")
       .drop("identifier","l1identifier","channel","id","totalChapters")
       .orderBy('medium,split(split('grade,",")(0)," ")(1).cast("int"),'subject,'name,'chapters)
-    chapterReport.show(false)
+//    chapterReport.show
     JobLogger.log(s"VDNMetricsJob: extracted chapter and textbook reports", None, INFO)
     saveReportToBlob(chapterReport, config, storageConfig, "ChapterLevel")
 
   }
 
   def generateReport(data: List[TextbookHierarchy], prevData: List[TextbookResponse], newData: List[TextbookHierarchy],textbookInfo: TextbookHierarchy, contentInfo: List[ContentReportResult], chapterInfo: List[String]): (List[TextbookResponse],List[ContentReportResult],String) = {
-    println("in generate report")
+//    println("in gene report")
     var textbookReport = prevData
     var contentData = contentInfo
     var l1identifier = chapterInfo(0)
@@ -126,10 +123,8 @@ object TBReportV2 extends optional.Application with IJob with BaseReportsJob {
     var textbook = List[TextbookHierarchy]()
 
     data.map(units=> {
-      println("loop1")
       val children = units.children
-      if(units.depth==1) {
-        println("loop2")
+      if(units.depth==1 && (units.contentType.getOrElse("").equalsIgnoreCase("TextBookUnit") || units.contentType.getOrElse("").equalsIgnoreCase("TextBook"))) {
         textbook = units :: newData
         l1identifier = units.identifier
         val grade = TextBookUtils.getString(textbookInfo.gradeLevel)
@@ -138,20 +133,17 @@ object TBReportV2 extends optional.Application with IJob with BaseReportsJob {
         textbookReport = report :: textbookReport
       }
 
-      if(units.depth!=0 && units.contentType.getOrElse("").nonEmpty) {
-        println("loop3")
+      if(units.depth!=0 && units.contentType.getOrElse("").nonEmpty && !units.contentType.getOrElse("").equalsIgnoreCase("TextBookUnit")) {
         contentData = ContentReportResult(textbookInfo.identifier,l1identifier, units.contentType.get) :: contentData
       }
 
       if(children.isDefined) {
-        println("loop4")
         val textbookReportData = generateReport(children.get, textbookReport, textbook,textbookInfo, contentData,List(l1identifier,totalChapters))
         textbookReport = textbookReportData._1
         contentData = textbookReportData._2
         totalChapters = textbookReportData._3
       }
     })
-    println("loop end")
 
     (textbookReport,contentData,totalChapters)
   }
