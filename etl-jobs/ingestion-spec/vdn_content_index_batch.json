@@ -62,6 +62,31 @@
                 },
                 {
                   "type": "path",
+                  "name": "programId",
+                  "expr": "$.data.programId"
+                },
+                {
+                  "type": "path",
+                  "name": "collectionId",
+                  "expr": "$.data.collectionId"
+                },
+                {
+                  "type": "path",
+                  "name": "organisationId",
+                  "expr": "$.data.organisationId"
+                },
+                {
+                  "type": "path",
+                  "name": "sampleContent",
+                  "expr": "$.data.sampleContent"
+                },
+                {
+                  "type": "path",
+                  "name": "unitIdentifiers",
+                  "expr": "$.data.unitIdentifiers"
+                },
+                {
+                  "type": "path",
                   "name": "channel",
                   "expr": "$.data.channel"
                 },
@@ -453,6 +478,26 @@
                 {
                   "type": "string",
                   "name": "board"
+                },
+                {
+                  "type": "string",
+                  "name": "programId"
+                },
+                {
+                  "type": "string",
+                  "name": "collectionId"
+                },
+                {
+                  "type": "string",
+                  "name": "organisationId"
+                },
+                {
+                  "type": "boolean",
+                  "name": "sampleContent"
+                },
+                {
+                  "type": "string",
+                  "name": "unitIdentifiers"
                 },
                 {
                   "type": "string",
