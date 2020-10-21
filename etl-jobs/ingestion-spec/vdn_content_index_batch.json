@@ -62,8 +62,8 @@
                 },
                 {
                   "type": "path",
-                  "name": "programId",
-                  "expr": "$.data.programId"
+                  "name": "lastStatusChangedOn",
+                  "expr": "$.data.lastStatusChangedOn"
                 },
                 {
                   "type": "path",
@@ -481,7 +481,7 @@
                 },
                 {
                   "type": "string",
-                  "name": "programId"
+                  "name": "lastStatusChangedOn"
                 },
                 {
                   "type": "string",
