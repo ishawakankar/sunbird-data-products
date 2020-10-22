@@ -529,7 +529,7 @@
                   "name": "chapterCount"
                 },
                 {
-                  "type": "string",
+                  "type": "number",
                   "name": "sampleContentCount"
                 },
                 {
