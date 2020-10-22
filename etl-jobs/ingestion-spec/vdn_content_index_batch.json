@@ -77,6 +77,31 @@
                 },
                 {
                   "type": "path",
+                  "name": "acceptedContents",
+                  "expr": "$.data.acceptedContents"
+                },
+                {
+                  "type": "path",
+                  "name": "rejectedContents",
+                  "expr": "$.data.rejectedContents"
+                },
+                {
+                  "type": "path",
+                  "name": "chapterCount",
+                  "expr": "$.data.chapterCount"
+                },
+                {
+                  "type": "path",
+                  "name": "sampleContentCount",
+                  "expr": "$.data.sampleContentCount"
+                },
+                {
+                  "type": "path",
+                  "name": "mvcContentCount",
+                  "expr": "$.data.mvcContentCount"
+                },
+                {
+                  "type": "path",
                   "name": "sampleContent",
                   "expr": "$.data.sampleContent"
                 },
@@ -490,6 +515,26 @@
                 {
                   "type": "string",
                   "name": "organisationId"
+                },
+                {
+                  "type": "string",
+                  "name": "acceptedContents"
+                },
+                {
+                  "type": "string",
+                  "name": "rejectedContents"
+                },
+                {
+                  "type": "number",
+                  "name": "chapterCount"
+                },
+                {
+                  "type": "string",
+                  "name": "sampleContentCount"
+                },
+                {
+                  "type": "string",
+                  "name": "mvcContentCount"
                 },
                 {
                   "type": "boolean",
