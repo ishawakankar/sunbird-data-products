@@ -638,15 +638,7 @@
                 "type": "expression",
                 "name": "acceptedContentCount",
                 "expression": "array_length(arr)"
-              }],
-              "filter": {
-                "type": "or",
-                "fields": [{
-                  "type": "selector",
-                  "dimension": "acceptedContents",
-                  "value": "1"
-                }]
-              }
+              }]
             },
             "timestampSpec":{
               "column":"timestamp",
