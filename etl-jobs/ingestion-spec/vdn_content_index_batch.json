@@ -37,7 +37,7 @@
                 },
                 {
                   "type": "path",
-                  "name": "acceptedContent",
+                  "name": "acceptedContents",
                   "expr": "$.data.acceptedContents[*]"
                 },
                 {
@@ -446,7 +446,7 @@
                 },
                 {
                   "type": "string",
-                  "name": "acceptedContent"
+                  "name": "acceptedContents"
                 },
                 {
                   "type": "string",
@@ -632,6 +632,21 @@
                 }
               ],
               "dimensionsExclusions": []
+            },
+            "transformSpec":{
+              "transforms": [{
+                "type": "expression",
+                "name": "acceptedContentCount",
+                "expression": "array_length(arr)"
+              }],
+              "filter": {
+                "type": "or",
+                "fields": [{
+                  "type": "selector",
+                  "dimension": "acceptedContents",
+                  "value": "1"
+                }]
+              }
             },
             "timestampSpec":{
               "column":"timestamp",
