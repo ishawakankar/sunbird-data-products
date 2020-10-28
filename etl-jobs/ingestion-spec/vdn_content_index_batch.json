@@ -37,8 +37,8 @@
                 },
                 {
                   "type": "path",
-                  "name": "acceptedContents",
-                  "expr": "$.data.acceptedContents"
+                  "name": "acceptedContent",
+                  "expr": "$.data.acceptedContents[*]"
                 },
                 {
                   "type": "path",
@@ -446,7 +446,7 @@
                 },
                 {
                   "type": "string",
-                  "name": "acceptedContents"
+                  "name": "acceptedContent"
                 },
                 {
                   "type": "string",
