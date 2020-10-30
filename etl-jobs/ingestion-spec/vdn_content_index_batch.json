@@ -637,7 +637,7 @@
               "transforms": [{
                 "type": "expression",
                 "name": "acceptedContentCount",
-                "expression": "array_length(acceptedContents)"
+                "expression": "length(acceptedContents)"
               }]
             },
             "timestampSpec":{
