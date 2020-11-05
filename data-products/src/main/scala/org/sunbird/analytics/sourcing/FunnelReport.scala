@@ -90,8 +90,9 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val data = programData.join(nominationRdd)
     var druidData = List[ProgramVisitors]()
     val druidQuery = JSONUtils.serialize(config("druidConfig"))
+    
     val report = data
-      .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted")))
+      .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted")) && DateTime.parse(f._2._1.enddate.split(" ")(0)).isAfter(DateTime.now().getMillis))
       .collect().toList
       .map(f => {
         val datav2 = getContributionData(f._2._1.program_id)
