@@ -94,9 +94,15 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted")))
       .map(f => {
         val datav2 = getContributionData(f._2._1.program_id)
-        druidData = List(ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0")) ++ druidData
-        JobLogger.log(s"Funnel program visitors - ${ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0")}",None, Level.INFO) //
-        FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
+        druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0") :: druidData
+        val query = getDruidQuery(druidQuery,f._2._1.program_id,s"${f._2._1.startdate.split(" ")(0)}T00:00:00+00:00/${f._2._1.enddate.split(" ")(0)}T00:00:00+00:00")
+        JobLogger.log(s"Funnel job query - $query",None, Level.INFO) //
+        val response = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
+        JobLogger.log(s"Funnel job data - $response",None, Level.INFO)
+        val noOfVisitors = if(response.nonEmpty) response.head.visitors.toString else "0"
+//        ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
+
+        FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,noOfVisitors,f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,datav2._1.toString,datav2._2.toString,datav2._3.toString,
           datav2._4.toString,f._2._1.rootorg_id)
       }).map(f=>(f.slug,f))
@@ -111,20 +117,21 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     JobLogger.log(s"Funnel job druidData length - ${druidData.length}",None, Level.INFO)
 
-    val visitorData = druidData.map(f => {
-      val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
-      JobLogger.log(s"Funnel job query - $query",None, Level.INFO) //
-      val response = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
-      JobLogger.log(s"Funnel job data - $response",None, Level.INFO)
-      val noOfVisitors = if(response.nonEmpty) response.head.visitors.toString else "0"
-      ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
-    }).toDF().na.fill(0)
+//    val visitorData = druidData.map(f => {
+//      val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
+//      JobLogger.log(s"Funnel job query - $query",None, Level.INFO) //
+//      val response = DruidDataFetcher.getDruidData(query).collect().map(f => JSONUtils.deserialize[DruidTextbookData](f))
+//      JobLogger.log(s"Funnel job data - $response",None, Level.INFO)
+//      val noOfVisitors = if(response.nonEmpty) response.head.visitors.toString else "0"
+//      ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
+//    }).toDF().na.fill(0)
+//
+//    val funnelReport = df
+//      .join(visitorData,Seq("program_id"),"left")
+//      .drop("startdate","enddate","program_id","noOfUsers")
 
-    val funnelReport = df
-      .join(visitorData,Seq("program_id"),"left")
-      .drop("startdate","enddate","program_id","noOfUsers")
     val storageConfig = getStorageConfig("reports", "")
-    saveReportToBlob(funnelReport, config, storageConfig, "FunnelReport")
+    saveReportToBlob(df, config, storageConfig, "FunnelReport")
 
   }
 
