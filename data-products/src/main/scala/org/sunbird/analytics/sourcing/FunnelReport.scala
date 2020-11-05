@@ -125,7 +125,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     JobLogger.log(s"FunnelReport Job - ${df.count()}:${visitorData.count()}",None, Level.INFO)
 
     val funnelReport = df
-      .join(visitorData,Seq("program_id"),"left")
+      .join(visitorData,Seq("program_id"),"inner")
       .drop("startdate","enddate","program_id","noOfUsers")
     val storageConfig = getStorageConfig("reports", "")
     saveReportToBlob(funnelReport, config, storageConfig, "FunnelReport")
