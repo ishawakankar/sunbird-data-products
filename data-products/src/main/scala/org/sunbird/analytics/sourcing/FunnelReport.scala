@@ -113,7 +113,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 //        f._2._2.getOrElse(TenantInfo("","Unknown")).slug)).filter(f=>f.program_id.nonEmpty).toDF()
 //    df.show
     val visitorData = druidData.map(f => {
-      val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
+    val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
   JobLogger.log(s"FunnelReport Job query - $query",None, Level.INFO)
       val response = DruidDataFetcher.getDruidData(query).collect()
   JobLogger.log(s"FunnelReport Job response - $response",None, Level.INFO)
@@ -121,6 +121,8 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       val noOfVisitors = if(data2.nonEmpty) data2.head.visitors.toString else "0"
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
     }).toDF().na.fill(0)
+    JobLogger.log(s"FunnelReport Job - Execution completed for visitor report",None, Level.INFO)
+    JobLogger.log(s"FunnelReport Job - ${df.count()}:${visitorData.count()}",None, Level.INFO)
 
     val funnelReport = df
       .join(visitorData,Seq("program_id"),"left")
