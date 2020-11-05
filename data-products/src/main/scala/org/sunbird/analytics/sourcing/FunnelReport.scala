@@ -140,7 +140,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
   }
 
   def getContributionData(programId: String): (Int,Int,Int,Int) = {
-    val url = Constants.COMPOSITE_SEARCH_URL
+    val url = "https://dock.preprod.ntp.net.in/action/composite/v3/search"
 
     val contributionRequest = s"""{
                                  |    "request": {
@@ -186,8 +186,9 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val acceptedContents = contentData.filter(p => null!=p.acceptedContents).flatMap(f=>f.acceptedContents).length
     val rejectedContents = contentData.filter(p => null!=p.rejectedContents).flatMap(f=>f.rejectedContents).length
     val contents = acceptedContents+rejectedContents
+    val pendingContributions = if(totalContributions-contents > 0) totalContributions-contents else 0
 
-    (totalContributors,totalContributions,totalContributions-contents,acceptedContents)
+    (totalContributors,totalContributions,pendingContributions,acceptedContents)
 
   }
 
