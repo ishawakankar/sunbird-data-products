@@ -4,6 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.{col, count, lit}
 import org.apache.spark.sql.{DataFrame, Encoders, SQLContext, SparkSession}
+import org.apache.spark.storage.StorageLevel
 import org.ekstep.analytics.framework.Level.INFO
 import org.ekstep.analytics.framework.{DruidQueryModel, FrameworkContext, IJob, JobConfig, JobContext, Level, StorageConfig}
 import org.ekstep.analytics.framework.conf.AppConf
@@ -105,6 +106,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     val df = report.join(tenantInfo,report.col("channel")===tenantInfo.col("id"),"left")
       .drop("channel","id")
+      .persist(StorageLevel.MEMORY_ONLY)
 //      .map(f=>
 //      FunnelResult(f._2._1.getOrElse(funnelResult).program_id,f._2._1.getOrElse(funnelResult).reportDate,f._2._1.getOrElse(funnelResult).projectName,
 //        f._2._1.getOrElse(funnelResult).noOfUsers,f._2._1.getOrElse(funnelResult).initiatedNominations,f._2._1.getOrElse(funnelResult).rejectedNominations,
@@ -120,16 +122,18 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
   val data2 = response.map(f => JSONUtils.deserialize[DruidTextbookData](f))
       val noOfVisitors = if(data2.nonEmpty) data2.head.visitors.toString else "0"
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
-    }).toDF().na.fill(0)
+    }).toDF().na.fill(0).persist(StorageLevel.MEMORY_ONLY)
     JobLogger.log(s"FunnelReport Job - Execution completed for visitor report",None, Level.INFO)
     JobLogger.log(s"FunnelReport Job - ${df.count()}:${visitorData.count()}",None, Level.INFO)
 
-    val funnelReport = df.coalesce(1)
-      .join(visitorData.coalesce(1),Seq("program_id"),"inner")
+    val funnelReport = df
+      .join(visitorData,Seq("program_id"),"inner")
       .drop("startdate","enddate","program_id","noOfUsers")
     val storageConfig = getStorageConfig("reports", "")
     saveReportToBlob(funnelReport, config, storageConfig, "FunnelReport")
 
+    df.unpersist(true)
+    visitorData.unpersist(true)
   }
 
   def getDruidQuery(query: String, programId: String, interval: String): DruidQueryModel = {
