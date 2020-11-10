@@ -94,6 +94,9 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val report = data
       .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted"))).collect().toList
       .map(f => {
+        if(f._2._1.program_id==AppConf.getConfig("program_id")) {
+          JobLogger.log(s"Got program id - ${f._2._1.program_id}",None, Level.INFO)
+        }
         val contributionData = getContributionData(f._2._1.program_id)
         druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0") :: druidData
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
@@ -106,6 +109,9 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       .persist(StorageLevel.MEMORY_ONLY)
 
     val visitorData = druidData.map(f => {
+      if(f.program_id==AppConf.getConfig("program_id")) {
+        JobLogger.log(s"Got program id in druid data - ${f.program_id}",None, Level.INFO)
+      }
       val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
       val response = DruidDataFetcher.getDruidData(query).collect()
       val druidData = response.map(f => JSONUtils.deserialize[DruidTextbookData](f))
