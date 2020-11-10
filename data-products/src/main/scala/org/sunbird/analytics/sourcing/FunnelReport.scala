@@ -114,8 +114,12 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       }
       JobLogger.log(s"Program id ${f.program_id}",None, Level.INFO)
       val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
-      val response = DruidDataFetcher.getDruidData(query).collect()
-      val druidData = response.map(f => JSONUtils.deserialize[DruidTextbookData](f))
+      val druidData = if(null != f.enddate && null != f.startdate && DateTime.parse(f.enddate.split(" ")(0)).isAfter(DateTime.parse(f.startdate.split(" ")(0)).getMillis)) {
+        val response = DruidDataFetcher.getDruidData(query).collect()
+        val p=response.map(f => JSONUtils.deserialize[DruidTextbookData](f))
+        p
+      } else Array[DruidTextbookData]()
+
       val noOfVisitors = if(druidData.nonEmpty) druidData.head.visitors.toString else "0"
       JobLogger.log(s"No of visitors: $noOfVisitors",None, Level.INFO)
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
