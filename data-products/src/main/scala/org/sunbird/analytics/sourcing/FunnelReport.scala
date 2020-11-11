@@ -99,10 +99,17 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
         }
         val contributionData = getContributionData(f._2._1.program_id)
         druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0") :: druidData
+        JobLogger.log(s"Visitor length - ${druidData.length} : ${ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0")}",None, Level.INFO)
         FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
           f._2._2.Pending,f._2._2.Approved,contributionData._1.toString,contributionData._2.toString,contributionData._3.toString,
           contributionData._4.toString,f._2._1.rootorg_id)
       }).toDF()
+
+    druidData.map(f=> {
+      if(f.program_id==AppConf.getConfig("program_id")) {
+        JobLogger.log(s"Got program id in druidData- ${f.program_id}",None, Level.INFO)
+      }
+    })
 
     val df = report.join(tenantInfo,report.col("channel") === tenantInfo.col("id"),"left")
       .drop("channel","id")
@@ -112,14 +119,14 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       if(f.program_id==AppConf.getConfig("program_id")) {
         JobLogger.log(s"Got program id in druid data - ${f.program_id}",None, Level.INFO)
       }
-      JobLogger.log(s"Program id ${f.program_id}",None, Level.INFO)
+
       val query = getDruidQuery(druidQuery,f.program_id,s"${f.startdate.split(" ")(0)}T00:00:00+00:00/${f.enddate.split(" ")(0)}T00:00:00+00:00")
       val druidData = if(null != f.enddate && null != f.startdate && DateTime.parse(f.enddate.split(" ")(0)).isAfter(DateTime.parse(f.startdate.split(" ")(0)).getMillis)) {
         val response = DruidDataFetcher.getDruidData(query).collect()
-        val p=response.map(f => JSONUtils.deserialize[DruidTextbookData](f))
+        val p = response.map(f => JSONUtils.deserialize[DruidTextbookData](f))
         p
       } else Array[DruidTextbookData]()
-
+      JobLogger.log(s"Program id ${f.program_id}: $druidData",None, Level.INFO)
       val noOfVisitors = if(druidData.nonEmpty) druidData.head.visitors.toString else "0"
       JobLogger.log(s"No of visitors: $noOfVisitors",None, Level.INFO)
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
