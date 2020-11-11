@@ -88,21 +88,21 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
     val reportDate = DateTimeFormat.forPattern("dd-MM-yyyy").print(DateTime.now())
     val tenantInfo = getTenantInfo(RestUtil).toDF()
 
-    val data = programData.join(nominationRdd)
+    val data = programData.leftOuterJoin(nominationRdd).map(f=>(f._2._1,f._2._2.getOrElse(NominationData("","","","",""))))
     var druidData = List[ProgramVisitors]()
     val druidQuery = JSONUtils.serialize(config("druidConfig"))
     val report = data
-      .filter(f=> null != f._2._1.status && (f._2._1.status.equalsIgnoreCase("Live") || f._2._1.status.equalsIgnoreCase("Unlisted"))).collect().toList
+      .filter(f=> null != f._1.status && (f._1.status.equalsIgnoreCase("Live") || f._1.status.equalsIgnoreCase("Unlisted"))).collect().toList
       .map(f => {
-        if(f._2._1.program_id==AppConf.getConfig("program_id")) {
-          JobLogger.log(s"Got program id - ${f._2._1.program_id}",None, Level.INFO)
+        if(f._1.program_id==AppConf.getConfig("program_id")) {
+          JobLogger.log(s"Got program id - ${f._1.program_id}",None, Level.INFO)
         }
-        val contributionData = getContributionData(f._2._1.program_id)
-        druidData = ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0") :: druidData
-        JobLogger.log(s"Visitor length - ${druidData.length} : ${ProgramVisitors(f._2._1.program_id,f._2._1.startdate,f._2._1.enddate, "0")}",None, Level.INFO)
-        FunnelResult(f._2._1.program_id,reportDate,f._2._1.name,"0",f._2._2.Initiated,f._2._2.Rejected,
-          f._2._2.Pending,f._2._2.Approved,contributionData._1.toString,contributionData._2.toString,contributionData._3.toString,
-          contributionData._4.toString,f._2._1.rootorg_id)
+        val contributionData = getContributionData(f._1.program_id)
+        druidData = ProgramVisitors(f._1.program_id,f._1.startdate,f._1.enddate, "0") :: druidData
+        JobLogger.log(s"Visitor length - ${druidData.length} : ${ProgramVisitors(f._1.program_id,f._1.startdate,f._1.enddate, "0")}",None, Level.INFO)
+        FunnelResult(f._1.program_id,reportDate,f._1.name,"0",f._2.Initiated,f._2.Rejected,
+          f._2.Pending,f._2.Approved,contributionData._1.toString,contributionData._2.toString,contributionData._3.toString,
+          contributionData._4.toString,f._1.rootorg_id)
       }).toDF()
 
     druidData.map(f=> {
