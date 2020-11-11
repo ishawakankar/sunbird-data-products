@@ -115,7 +115,7 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
       .drop("channel","id")
       .persist(StorageLevel.MEMORY_ONLY)
 
-    val visitorData = druidData.filter(f=> f.startdate!=null && f.enddate!=null).map(f => {
+    val visitorData = druidData.map(f => {
       if(f.program_id==AppConf.getConfig("program_id")) {
         JobLogger.log(s"Got program id in druid data - ${f.program_id}",None, Level.INFO)
       }
