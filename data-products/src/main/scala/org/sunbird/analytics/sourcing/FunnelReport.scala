@@ -127,6 +127,9 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
         p
       } else Array[DruidTextbookData]()
       JobLogger.log(s"Program id ${f.program_id}: $druidData",None, Level.INFO)
+      if(druidData.nonEmpty && null != druidData) {
+        JobLogger.log(s"Program id ${f.program_id}: ${druidData.head.visitors}, ${druidData.head}",None, Level.INFO)
+      }
       val noOfVisitors = if(druidData.nonEmpty) druidData.head.visitors.toString else "0"
       JobLogger.log(s"No of visitors: $noOfVisitors",None, Level.INFO)
       ProgramVisitors(f.program_id,f.startdate,f.enddate,noOfVisitors)
