@@ -5,7 +5,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.{col, count, lit}
 import org.apache.spark.sql.{DataFrame, Encoders, SQLContext, SparkSession}
 import org.apache.spark.storage.StorageLevel
-import org.ekstep.analytics.framework.Level.INFO
 import org.ekstep.analytics.framework.{DruidQueryModel, FrameworkContext, IJob, JobConfig, JobContext, Level, StorageConfig}
 import org.ekstep.analytics.framework.conf.AppConf
 import org.ekstep.analytics.framework.fetcher.DruidDataFetcher
@@ -124,6 +123,10 @@ object FunnelReport extends optional.Application with IJob with BaseReportsJob {
 
     df.unpersist(true)
     visitorData.unpersist(true)
+
+    JobLogger.end("FunnelReport Job completed successfully!", "SUCCESS", None)
+    spark.stop()
+    fc.closeContext()
   }
 
   def getDruidQuery(query: String, programId: String, interval: String): DruidQueryModel = {
