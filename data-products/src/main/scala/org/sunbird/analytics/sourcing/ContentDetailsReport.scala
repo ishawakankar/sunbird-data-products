@@ -42,7 +42,7 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
   def execute(config: String)(implicit sc: SparkSession, fc: FrameworkContext): Unit = {
 
 //    val tenantInfo = getTenantInfo(RestUtil).collect().toList
-    generateTenantReport("f.id","f.slug")
+    generateTenantReport("f.id","f.slug", config)
 
 //    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"},{"fieldName": "board","aliasName": "board"}, {"fieldName": "medium","aliasName": "medium"}, {"fieldName": "gradeLevel","aliasName": "gradeLevel"}, {"fieldName": "subject","aliasName": "subject"}, {"fieldName": "status","aliasName": "status"}, {"fieldName": "acceptedContents","aliasName": "acceptedContents"},{"fieldName": "rejectedContents","aliasName": "rejectedContents"}],"filters": [{"type": "equals","dimension": "contentType","value": "TextBook"}, {"type": "in","dimension": "status","values": ["Live","Draft"]},{"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
 //
@@ -62,7 +62,7 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
     JSONUtils.deserialize[DruidQueryModel](JSONUtils.serialize(finalMap))
   }
 
-  def generateTenantReport(channel: String, slug: String)(implicit sc: SparkSession, fc: FrameworkContext): Unit = {
+  def generateTenantReport(channel: String, slug: String, config: String)(implicit sc: SparkSession, fc: FrameworkContext): Unit = {
     implicit val sparkCon = sc.sparkContext
     import sc.implicits._
 
@@ -89,7 +89,7 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
         }).toDF().withColumn("slug",lit("testSlug"))
           .withColumn("reportName",lit("ContentDetailsReport"))
 
-    implicit val jobConfig = JSONUtils.deserialize[JobConfig](AppConf.getConfig("content.details.config"))
+    implicit val jobConfig = JSONUtils.deserialize[JobConfig](config)
 val storageConfig = getStorageConfig(jobConfig, "")
     calcDf.saveToBlobStore(storageConfig, "csv", "content-details",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
