@@ -90,7 +90,7 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
 //      col("contentName").as("unitName"))
 //newDf.join(chapterInfo, newDf.col("unitIdentifiers")===chapterInfo.col("unitId"),
 //"left").drop("unitId").na.fill("Unknown",Seq("unitName")).show
-    newDf.show(2)
+
         val calcDf = newDf.rdd.map(f => {
           val contentStatus = if(f.getAs[Seq[String]](14).contains(f.getString(0))) "Approved" else if(f.getAs[Seq[String]](15).contains(f.getString(0))) "Rejected" else "Pending"
           FinalResultDF(f.getString(9), f.getString(5), f.getString(6), f.getString(7), f.getString(8),
@@ -99,17 +99,22 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
 
         }).toDF().withColumn("slug",lit("testSlug"))
           .withColumn("reportName",lit("ContentDetailsReport"))
-    calcDf.show
 
-//    val programData = sc.read.jdbc(url, programTable, connProperties)
-//      .select(col("program_id"), col("name").as("programName"))
+    JobLogger.log(s"calcDf count - ${calcDf.count()}",None, Level.INFO)
+    val programData = sc.read.jdbc(url, programTable, connProperties)
+      .select(col("program_id"), col("name").as("programName"))
 //
-//    val finalDf = programData.join(calcDf, programData.col("program_id") === calcDf.col("programId"), "inner")
-//      .drop("program_id")
+    JobLogger.log(s"programData count - ${programData.count()}",None, Level.INFO)
+
+    val finalDf = programData.join(calcDf, programData.col("program_id") === calcDf.col("programId"), "inner")
+      .drop("program_id")
+    JobLogger.log(s"finalDf count - ${finalDf.count()}",None, Level.INFO)
 
     implicit val jobConfig = JSONUtils.deserialize[JobConfig](config)
 val storageConfig = getStorageConfig(jobConfig, "")
     calcDf.saveToBlobStore(storageConfig, "csv", "content-details",
+      Option(Map("header" -> "true")), Option(List("slug","reportName")))
+    finalDf.saveToBlobStore(storageConfig, "csv", "content-details-org",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
     JobLogger.log(s"Completed execution - ${calcDf.count()}: $storageConfig",None, Level.INFO)
 //        calcDf.show
