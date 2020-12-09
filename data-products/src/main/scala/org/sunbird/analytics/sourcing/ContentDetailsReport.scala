@@ -12,12 +12,15 @@ import org.ekstep.analytics.framework.util.{CommonUtil, JSONUtils, JobLogger, Re
 import org.ekstep.analytics.framework.{DruidQueryModel, FrameworkContext, IJob, JobConfig, Level, StorageConfig}
 import org.sunbird.analytics.exhaust.BaseReportsJob
 import org.sunbird.analytics.job.report.CourseMetricsJobV2.getStorageConfig
+import org.sunbird.analytics.sourcing.FunnelReport.{connProperties, programTable, url}
 import org.sunbird.analytics.sourcing.SourcingMetrics.getTenantInfo
 import org.sunbird.analytics.util.CourseUtils
 
-case class ContentDetails(identifier: String, name: String, board: String, medium: String, gradeLevel: String, subject: String, acceptedContents: String, rejectedContents: String)
+case class ContentDetails(identifier: String, name: String, board: String, medium: String, gradeLevel: String, subject: String, acceptedContents: String, rejectedContents: String, programId: String, createdBy: String, creator: String, mimeType: String)
 case class ContentDetailsResponse(identifier: String, collectionId: String, name: String, contentType: String, unitIdentifiers: String)
-case class FinalResultDF(identifier: String, name: String, board: String, medium: String, gradeLevel: String, subject: String, contentId: String, contentName: String, contentType: String, contentStatus: String, chapterId: String)
+case class FinalResultDF(programId: String, board: String, medium: String, gradeLevel: String, subject: String, contentId: String,
+                         contentName: String, name: String, contentType: String, mimeType: String, chapterId: String, contentStatus: String,
+                         creator: String, identifier: String, createdBy: String)
 
 object ContentDetailsReport extends optional.Application with IJob with BaseReportsJob {
 
@@ -44,9 +47,6 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
 //    val tenantInfo = getTenantInfo(RestUtil).collect().toList
     generateTenantReport("f.id","f.slug", config)
 
-//    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"},{"fieldName": "board","aliasName": "board"}, {"fieldName": "medium","aliasName": "medium"}, {"fieldName": "gradeLevel","aliasName": "gradeLevel"}, {"fieldName": "subject","aliasName": "subject"}, {"fieldName": "status","aliasName": "status"}, {"fieldName": "acceptedContents","aliasName": "acceptedContents"},{"fieldName": "rejectedContents","aliasName": "rejectedContents"}],"filters": [{"type": "equals","dimension": "contentType","value": "TextBook"}, {"type": "in","dimension": "status","values": ["Live","Draft"]},{"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
-//
-
   }
 
   def getQuery(query: String, channel: String): DruidQueryModel = {
@@ -67,7 +67,7 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
     import sc.implicits._
 
     JobLogger.log(s"Generating report for channel - $channel and slug - $slug", None, INFO)
-    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"}, {"fieldName": "board","aliasName": "board"}, {"fieldName": "medium","aliasName": "medium"}, {"fieldName": "gradeLevel","aliasName": "gradeLevel"}, {"fieldName": "subject","aliasName": "subject"}, {"fieldName": "status","aliasName": "status"}, {"fieldName": "acceptedContents","aliasName": "acceptedContents"}, {"fieldName": "rejectedContents","aliasName": "rejectedContents"}],"filters": [{"type": "equals","dimension": "contentType","value": "TextBook"}, {"type": "in","dimension": "status","values": ["Live", "Draft"]}, {"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
+    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"}, {"fieldName": "board","aliasName": "board"}, {"fieldName": "medium","aliasName": "medium"}, {"fieldName": "gradeLevel","aliasName": "gradeLevel"}, {"fieldName": "subject","aliasName": "subject"}, {"fieldName": "status","aliasName": "status"}, {"fieldName": "acceptedContents","aliasName": "acceptedContents"}, {"fieldName": "rejectedContents","aliasName": "rejectedContents"}, {"fieldName": "programId","aliasName": "programId"}, {"fieldName": "createdBy","aliasName": "createdBy"}, {"fieldName": "creator","aliasName": "creator"}, {"fieldName": "mimeType","aliasName": "mimeType"}],"filters": [{"type": "equals","dimension": "contentType","value": "TextBook"}, {"type": "in","dimension": "status","values": ["Live", "Draft"]}, {"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
 
     val response = DruidDataFetcher.getDruidData(JSONUtils.deserialize[DruidQueryModel](query),true)
 
@@ -75,24 +75,41 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
     JobLogger.log(s"textbook count - ${textbooks.count()}",None, Level.INFO)
         val contents = getContents().toDF().withColumnRenamed("identifier","contentId")
           .withColumnRenamed("name","contentName")
+//    contents.show(2)
     JobLogger.log(s"contents count - ${contents.count()}",None, Level.INFO)
         val df = contents.join(textbooks, contents.col("collectionId") === textbooks.col("identifier"), "inner")
     JobLogger.log(s"df count - ${df.count()}",None, Level.INFO)
         val newDf=df
           .groupBy("contentId","contentName","contentType","identifier",
-          "name","board","medium","gradeLevel","subject","unitIdentifiers")
+          "name","board","medium","gradeLevel","subject","programId","createdBy",
+            "creator","mimeType","unitIdentifiers")
           .agg(collect_list("acceptedContents").as("acceptedContents"),collect_list("rejectedContents").as("rejectedContents"))
     JobLogger.log(s"newDf count - ${newDf.count()}",None, Level.INFO)
+//    newDf.show(2)
+//    val chapterInfo = contents.select(col("contentId").as("unitId"),
+//      col("contentName").as("unitName"))
+//newDf.join(chapterInfo, newDf.col("unitIdentifiers")===chapterInfo.col("unitId"),
+//"left").drop("unitId").na.fill("Unknown",Seq("unitName")).show
+    newDf.show(2)
         val calcDf = newDf.rdd.map(f => {
-          val contentStatus = if(f.getAs[Seq[String]](10).contains(f.getString(0))) "Approved" else if(f.getAs[Seq[String]](11).contains(f.getString(0))) "Rejected" else "Pending"
-          FinalResultDF(f.getString(3),f.getString(4),f.getString(5),f.getString(6),f.getString(7),f.getString(8),f.getString(0)
-          ,f.getString(1),f.getString(2),contentStatus,f.getString(9))
+          val contentStatus = if(f.getAs[Seq[String]](14).contains(f.getString(0))) "Approved" else if(f.getAs[Seq[String]](15).contains(f.getString(0))) "Rejected" else "Pending"
+          FinalResultDF(f.getString(9), f.getString(5), f.getString(6), f.getString(7), f.getString(8),
+            f.getString(0),f.getString(1),f.getString(4),f.getString(2),f.getString(12),
+            f.getString(13),contentStatus,f.getString(11),f.getString(3),f.getString(10))
+
         }).toDF().withColumn("slug",lit("testSlug"))
           .withColumn("reportName",lit("ContentDetailsReport"))
+    calcDf.show
+
+    val programData = sc.read.jdbc(url, programTable, connProperties)
+      .select(col("program_id"), col("name").as("programName"))
+
+    val finalDf = programData.join(calcDf, programData.col("program_id") === calcDf.col("programId"), "inner")
+      .drop("program_id")
 
     implicit val jobConfig = JSONUtils.deserialize[JobConfig](config)
 val storageConfig = getStorageConfig(jobConfig, "")
-    calcDf.saveToBlobStore(storageConfig, "csv", "content-details",
+    finalDf.saveToBlobStore(storageConfig, "csv", "content-details",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
     JobLogger.log(s"Completed execution - ${calcDf.count()}: $storageConfig",None, Level.INFO)
 //        calcDf.show
