@@ -24,7 +24,7 @@ case class FinalResultDF(programId: String, board: String, medium: String, grade
 
 object ContentDetailsReport extends optional.Application with IJob with BaseReportsJob {
 
-  implicit val className = "org.sunbird.analytics.job.ContentDetailsReport"
+  implicit val className = "org.sunbird.analytics.sourcing.ContentDetailsReport"
   val jobName: String = "Content Details Job"
 
   def main(config: String)(implicit sc: Option[SparkContext], fc: Option[FrameworkContext]): Unit = {
@@ -101,15 +101,15 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
           .withColumn("reportName",lit("ContentDetailsReport"))
     calcDf.show
 
-    val programData = sc.read.jdbc(url, programTable, connProperties)
-      .select(col("program_id"), col("name").as("programName"))
-
-    val finalDf = programData.join(calcDf, programData.col("program_id") === calcDf.col("programId"), "inner")
-      .drop("program_id")
+//    val programData = sc.read.jdbc(url, programTable, connProperties)
+//      .select(col("program_id"), col("name").as("programName"))
+//
+//    val finalDf = programData.join(calcDf, programData.col("program_id") === calcDf.col("programId"), "inner")
+//      .drop("program_id")
 
     implicit val jobConfig = JSONUtils.deserialize[JobConfig](config)
 val storageConfig = getStorageConfig(jobConfig, "")
-    finalDf.saveToBlobStore(storageConfig, "csv", "content-details",
+    calcDf.saveToBlobStore(storageConfig, "csv", "content-details",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
     JobLogger.log(s"Completed execution - ${calcDf.count()}: $storageConfig",None, Level.INFO)
 //        calcDf.show
