@@ -72,16 +72,17 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
     val response = DruidDataFetcher.getDruidData(JSONUtils.deserialize[DruidQueryModel](query),true)
 
         val textbooks = response.map(f=> JSONUtils.deserialize[ContentDetails](f)).toDF()
+    JobLogger.log(s"textbook count - ${textbooks.count()}",None, Level.INFO)
         val contents = getContents().toDF().withColumnRenamed("identifier","contentId")
           .withColumnRenamed("name","contentName")
-
+    JobLogger.log(s"contents count - ${contents.count()}",None, Level.INFO)
         val df = contents.join(textbooks, contents.col("collectionId") === textbooks.col("identifier"), "inner")
-
+    JobLogger.log(s"df count - ${df.count()}",None, Level.INFO)
         val newDf=df
           .groupBy("contentId","contentName","contentType","identifier",
           "name","board","medium","gradeLevel","subject","unitIdentifiers")
           .agg(collect_list("acceptedContents").as("acceptedContents"),collect_list("rejectedContents").as("rejectedContents"))
-
+    JobLogger.log(s"newDf count - ${newDf.count()}",None, Level.INFO)
         val calcDf = newDf.rdd.map(f => {
           val contentStatus = if(f.getAs[Seq[String]](10).contains(f.getString(0))) "Approved" else if(f.getAs[Seq[String]](11).contains(f.getString(0))) "Rejected" else "Pending"
           FinalResultDF(f.getString(3),f.getString(4),f.getString(5),f.getString(6),f.getString(7),f.getString(8),f.getString(0)
@@ -93,7 +94,7 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
 val storageConfig = getStorageConfig(jobConfig, "")
     calcDf.saveToBlobStore(storageConfig, "csv", "content-details",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
-
+    JobLogger.log(s"Completed execution - ${calcDf.count()}: $storageConfig",None, Level.INFO)
 //        calcDf.show
   }
 
