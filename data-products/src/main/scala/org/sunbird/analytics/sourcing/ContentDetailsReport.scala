@@ -4,6 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{array_contains, col, collect_list, collect_set, lit, when}
+import org.apache.spark.storage.StorageLevel
 import org.ekstep.analytics.framework.Level.INFO
 import org.ekstep.analytics.framework.conf.AppConf
 import org.ekstep.analytics.framework.fetcher.DruidDataFetcher
@@ -103,11 +104,13 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
     JobLogger.log(s"calcDf count - ${calcDf.count()}",None, Level.INFO)
     val programData = sc.read.jdbc(url, programTable, connProperties)
       .select(col("program_id"), col("name").as("programName"))
+      .persist(StorageLevel.MEMORY_ONLY)
 //
     JobLogger.log(s"programData count - ${programData.count()}",None, Level.INFO)
 
     val finalDf = programData.join(calcDf, programData.col("program_id") === calcDf.col("programId"), "inner")
-      .drop("program_id")
+      .drop("program_id").persist(StorageLevel.MEMORY_ONLY)
+    finalDf.show()
     JobLogger.log(s"finalDf count - ${finalDf.count()}",None, Level.INFO)
 
     implicit val jobConfig = JSONUtils.deserialize[JobConfig](config)
@@ -117,7 +120,9 @@ val storageConfig = getStorageConfig(jobConfig, "")
     finalDf.saveToBlobStore(storageConfig, "csv", "content-details-org",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
     JobLogger.log(s"Completed execution - ${calcDf.count()}: $storageConfig",None, Level.INFO)
-//        calcDf.show
+
+    finalDf.unpersist(true)
+    programData.unpersist(true)
   }
 
   def getContents()(implicit sc: SparkContext, fc: FrameworkContext): RDD[ContentDetailsResponse] = {
