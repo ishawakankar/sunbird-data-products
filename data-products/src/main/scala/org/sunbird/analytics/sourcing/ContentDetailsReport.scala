@@ -20,8 +20,9 @@ import org.sunbird.analytics.util.CourseUtils
 case class ContentDetails(identifier: String, name: String, board: String, medium: String, gradeLevel: String, subject: String, acceptedContents: String, rejectedContents: String, programId: String, createdBy: String, creator: String, mimeType: String)
 case class ContentDetailsResponse(identifier: String, collectionId: String, name: String, contentType: String, unitIdentifiers: String)
 case class FinalResultDF(programId: String, board: String, medium: String, gradeLevel: String, subject: String, contentId: String,
-                         contentName: String, name: String, contentType: String, mimeType: String, chapterId: String, contentStatus: String,
+                         contentName: String, name: String, chapterName: String, contentType: String, mimeType: String, chapterId: String, contentStatus: String,
                          creator: String, identifier: String, createdBy: String)
+case class ChapterInfo(name: String, unitIdentifiers: String, identifier: String)
 
 object ContentDetailsReport extends optional.Application with IJob with BaseReportsJob {
 
@@ -68,7 +69,7 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
     import sc.implicits._
 
     JobLogger.log(s"Generating report for channel - $channel and slug - $slug", None, INFO)
-    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"}, {"fieldName": "board","aliasName": "board"}, {"fieldName": "medium","aliasName": "medium"}, {"fieldName": "gradeLevel","aliasName": "gradeLevel"}, {"fieldName": "subject","aliasName": "subject"}, {"fieldName": "status","aliasName": "status"}, {"fieldName": "acceptedContents","aliasName": "acceptedContents"}, {"fieldName": "rejectedContents","aliasName": "rejectedContents"}, {"fieldName": "programId","aliasName": "programId"}, {"fieldName": "createdBy","aliasName": "createdBy"}, {"fieldName": "creator","aliasName": "creator"}, {"fieldName": "mimeType","aliasName": "mimeType"}],"filters": [{"type": "equals","dimension": "contentType","value": "TextBook"}, {"type": "in","dimension": "status","values": ["Live", "Draft"]}, {"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
+    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "programId","aliasName": "programId"}, {"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"}, {"fieldName": "board","aliasName": "board"}, {"fieldName": "medium","aliasName": "medium"}, {"fieldName": "gradeLevel","aliasName": "gradeLevel"}, {"fieldName": "subject","aliasName": "subject"}, {"fieldName": "status","aliasName": "status"}, {"fieldName": "acceptedContents","aliasName": "acceptedContents"}, {"fieldName": "rejectedContents","aliasName": "rejectedContents"}, {"fieldName": "createdBy","aliasName": "createdBy"}, {"fieldName": "creator","aliasName": "creator"}, {"fieldName": "mimeType","aliasName": "mimeType"}],"filters": [{"type": "equals","dimension": "contentType","value": "TextBook"},{"type": "isnotnull","dimension": "programId"}, {"type": "in","dimension": "status","values": ["Draft"]}, {"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
 
     val response = DruidDataFetcher.getDruidData(JSONUtils.deserialize[DruidQueryModel](query),true)
 
@@ -86,20 +87,31 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
             "creator","mimeType","unitIdentifiers")
           .agg(collect_list("acceptedContents").as("acceptedContents"),collect_list("rejectedContents").as("rejectedContents"))
     JobLogger.log(s"newDf count - ${newDf.count()}",None, Level.INFO)
-//    newDf.show(2)
+    newDf.show(2)
 //    val chapterInfo = contents.select(col("contentId").as("unitId"),
 //      col("contentName").as("unitName"))
 //newDf.join(chapterInfo, newDf.col("unitIdentifiers")===chapterInfo.col("unitId"),
 //"left").drop("unitId").na.fill("Unknown",Seq("unitName")).show
+    val chapterInfo = getChapterInfo().toDF()
+  .select(col("name").as("chapterName"), col("identifier").as("contentIdentifier"),
+  col("unitIdentifiers").as("unitId"))
+    chapterInfo.show(2)
+
+
+    val pl = newDf.join(chapterInfo, newDf.col("unitIdentifiers")===chapterInfo.col("unitId")
+      && newDf.col("contentId")===chapterInfo.col("contentIdentifier"),"left")
+      pl.show
+
+    println(newDf.count(),pl.count(),chapterInfo.count())
 
         val calcDf = newDf.rdd.map(f => {
           val contentStatus = if(f.getAs[Seq[String]](14).contains(f.getString(0))) "Approved" else if(f.getAs[Seq[String]](15).contains(f.getString(0))) "Rejected" else "Pending"
           FinalResultDF(f.getString(9), f.getString(5), f.getString(6), f.getString(7), f.getString(8),
-            f.getString(0),f.getString(1),f.getString(4),f.getString(2),f.getString(12),
+            f.getString(0),f.getString(1),f.getString(4),f.getString(16),f.getString(2),f.getString(12),
             f.getString(13),contentStatus,f.getString(11),f.getString(3),f.getString(10))
 
-        }).toDF().withColumn("slug",lit("testSlug"))
-          .withColumn("reportName",lit("ContentDetailsReport"))
+        }).toDF().withColumn("slug",lit("nit123"))
+
 
     JobLogger.log(s"calcDf count - ${calcDf.count()}",None, Level.INFO)
     val programData = sc.read.jdbc(url, programTable, connProperties)
@@ -115,9 +127,18 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
 
     implicit val jobConfig = JSONUtils.deserialize[JobConfig](config)
 val storageConfig = getStorageConfig(jobConfig, "")
-    calcDf.saveToBlobStore(storageConfig, "csv", "content-details",
+    calcDf.withColumn("reportName",lit("ContentDetailsReport")).saveToBlobStore(storageConfig, "csv", "content-details",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
-    finalDf.saveToBlobStore(storageConfig, "csv", "content-details-org",
+    val labels = Map("programName"->"Project Name","programId"->"Project ID","board"->"Board",
+    "medium"->"Medium","gradeLevel"->"Grade","subject"->"Subject","contentId"->"Content ID",
+    "contentName"->"Content Name","name"->"Textbook Name","contentType"->"Content Type",
+    "mimeType"->"MimeType","chapterId"->"Chapter ID","contentStatus"->"Content Status",
+    "creator"->"Creator Name","identifier"->"Textbook ID","createdBy"->"CreatedBy ID")
+
+
+    finalDf.select(finalDf.columns.map(c => finalDf.col(c).as(labels.getOrElse(c, c))): _*)
+      .withColumn("reportName",lit("ContentDetailsReport"))
+      .saveToBlobStore(storageConfig, "csv", "sourcing",
       Option(Map("header" -> "true")), Option(List("slug","reportName")))
     JobLogger.log(s"Completed execution - ${calcDf.count()}: $storageConfig",None, Level.INFO)
 
@@ -126,10 +147,17 @@ val storageConfig = getStorageConfig(jobConfig, "")
   }
 
   def getContents()(implicit sc: SparkContext, fc: FrameworkContext): RDD[ContentDetailsResponse] = {
-    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"},  {"fieldName": "contentType","aliasName": "contentType"},  {"fieldName": "unitIdentifiers","aliasName": "unitIdentifiers"}, {"fieldName": "collectionId","aliasName": "collectionId"}],"filters": [{"type": "notequals","dimension": "contentType","value": "TextBook"}, {"type": "in","dimension": "status","values": ["Live", "Draft"]}, {"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
+    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "identifier","aliasName": "identifier"}, {"fieldName": "name","aliasName": "name"}, {"fieldName": "contentType","aliasName": "contentType"}, {"fieldName": "unitIdentifiers","aliasName": "unitIdentifiers"}, {"fieldName": "collectionId","aliasName": "collectionId"}],"filters": [{"type": "notequals","dimension": "contentType","value": "TextBook"}, {"type": "in","dimension": "status","values": ["Live"]}, {"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
     val response = DruidDataFetcher.getDruidData(JSONUtils.deserialize[DruidQueryModel](query), true)
 
     response.map(f => JSONUtils.deserialize[ContentDetailsResponse](f))
+  }
+
+  def getChapterInfo()(implicit sc: SparkContext, fc: FrameworkContext): RDD[ChapterInfo] = {
+    val query = """{"queryType": "groupBy","dataSource": "vdn-content-model-snapshot","intervals": "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00","aggregations": [{"name": "count","type": "count"}],"dimensions": [{"fieldName": "unitIdentifiers","aliasName": "unitIdentifiers"},{"fieldName": "name","aliasName": "name"},{"fieldName": "identifier","aliasName": "identifier"}],"filters": [{"type": "isnotnull","dimension": "unitIdentifiers"}, {"type": "in","dimension": "status","values": ["Live"]}, {"type": "equals","dimension": "channel","value": "01309282781705830427"}],"postAggregation": [],"descending": "false","limitSpec": {"type": "default","limit": 1000000,"columns": [{"dimension": "count","direction": "descending"}]}}""".stripMargin
+    val response = DruidDataFetcher.getDruidData(JSONUtils.deserialize[DruidQueryModel](query), true)
+
+    response.map(f => JSONUtils.deserialize[ChapterInfo](f))
   }
 
 }
