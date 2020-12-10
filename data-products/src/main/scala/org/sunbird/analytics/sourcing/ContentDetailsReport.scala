@@ -95,23 +95,23 @@ object ContentDetailsReport extends optional.Application with IJob with BaseRepo
     val chapterInfo = getChapterInfo().toDF()
   .select(col("name").as("chapterName"), col("identifier").as("contentIdentifier"),
   col("unitIdentifiers").as("unitId"))
-    chapterInfo.show(2)
+//    chapterInfo.show(2)
 
 
     val pl = newDf.join(chapterInfo, newDf.col("unitIdentifiers")===chapterInfo.col("unitId")
       && newDf.col("contentId")===chapterInfo.col("contentIdentifier"),"left")
-      pl.show
+//      pl.show
 
     println(newDf.count(),pl.count(),chapterInfo.count())
 
-        val calcDf = newDf.rdd.map(f => {
+        val calcDf = pl.rdd.map(f => {
           val contentStatus = if(f.getAs[Seq[String]](14).contains(f.getString(0))) "Approved" else if(f.getAs[Seq[String]](15).contains(f.getString(0))) "Rejected" else "Pending"
           FinalResultDF(f.getString(9), f.getString(5), f.getString(6), f.getString(7), f.getString(8),
             f.getString(0),f.getString(1),f.getString(4),f.getString(16),f.getString(2),f.getString(12),
             f.getString(13),contentStatus,f.getString(11),f.getString(3),f.getString(10))
 
         }).toDF().withColumn("slug",lit("nit123"))
-
+    calcDf.show
 
     JobLogger.log(s"calcDf count - ${calcDf.count()}",None, Level.INFO)
     val programData = sc.read.jdbc(url, programTable, connProperties)
