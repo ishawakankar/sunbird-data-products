@@ -639,7 +639,8 @@
             }
           }
         },
-        "metricsSpec":[{
+        "metricsSpec":[
+            {
           "type": "longSum",
           "name": "me_audiosCount",
           "fieldName": "me_audiosCount"
@@ -789,6 +790,24 @@
           "segmentGranularity":"day",
           "queryGranularity":"none",
           "rollup": true
+        },
+        "transformSpec": {
+            "transforms": [{
+                "type": "expression",
+                "name": "acceptedContentsLength",
+                "expression": "length(acceptedContents)"
+              },
+              {
+                "type": "expression",
+                "name": "rejectedContentsSize",
+                "expression": "array_length(rejectedContents)"
+              },
+              {
+                "type": "expression",
+                "name": "rejectedContentsLength",
+                "expression": "rejectedContents.length"
+              }
+            ]
         }
       },
       "ioConfig":{
