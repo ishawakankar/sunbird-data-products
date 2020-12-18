@@ -792,15 +792,16 @@
           "rollup": true
         },
         "transformSpec": {
-            "transforms": [{
+            "transforms": [
+              {
                 "type": "expression",
-                "name": "acceptedContentsLength",
-                "expression": "length(acceptedContents)"
+                "name": "acceptedContentsSize",
+                "expression": "array_length(acceptedContents)"
               },
               {
                 "type": "expression",
-                "name": "rejectedContentsSize",
-                "expression": "array_length(rejectedContents)"
+                "name": "rejectedContentsLength",
+                "expression": "rejectedContents.length"
               }
             ]
         }
