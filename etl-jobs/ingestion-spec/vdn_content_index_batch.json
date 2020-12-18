@@ -800,8 +800,18 @@
               },
               {
                 "type": "expression",
+                "name": "acceptedContentsCon",
+                "expression": "concat('approved-'+acceptedContents)"
+              },
+              {
+                "type": "expression",
                 "name": "rejectedContentsLength",
                 "expression": "rejectedContents.length"
+              },
+              {
+                "type": "expression",
+                "name": "rejectedContentsSize",
+                "expression": "size(rejectedContents)"
               }
             ]
         }
