@@ -801,11 +801,6 @@
                 "type": "expression",
                 "name": "rejectedContentsSize",
                 "expression": "array_length(rejectedContents)"
-              },
-              {
-                "type": "expression",
-                "name": "rejectedContentsLength",
-                "expression": "rejectedContents.length"
               }
             ]
         }
