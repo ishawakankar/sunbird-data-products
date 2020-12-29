@@ -372,6 +372,11 @@
                 },
                 {
                   "type": "path",
+                  "name": "primaryCategory",
+                  "expr": "$.data.primaryCategory"
+                },
+                {
+                  "type": "path",
                   "name": "subject",
                   "expr": "$.data.subject"
                 },
@@ -600,6 +605,10 @@
                 {
                   "type": "string",
                   "name": "prevStatus"
+                },
+                {
+                  "type": "string",
+                  "name": "primaryCategory"
                 },
                 {
                   "type": "string",
