@@ -7,7 +7,7 @@ import org.apache.spark.sql.types.StructType
 import org.ekstep.analytics.framework.FrameworkContext
 import org.ekstep.analytics.framework.JobConfig
 import org.ekstep.analytics.framework.JobContext
-import org.ekstep.analytics.framework.util.CommonUtil
+import org.sunbird.analytics.util.CommonUtils
 import org.sunbird.cloud.storage.conf.AppConf
 import org.ekstep.analytics.framework.StorageConfig
 
@@ -39,9 +39,9 @@ trait BaseReportsJob {
     val sparkElasticsearchConnectionHost = modelParams.get("sparkElasticsearchConnectionHost")
     val sparkRedisConnectionHost = modelParams.get("sparkRedisConnectionHost")
     val sparkUserDbRedisIndex = modelParams.get("sparkUserDbRedisIndex")
-    JobContext.parallelization = CommonUtil.getParallelization(config)
+    JobContext.parallelization = CommonUtils.getParallelization(config)
     val readConsistencyLevel = modelParams.getOrElse("cassandraReadConsistency", "LOCAL_QUORUM").asInstanceOf[String];
-    val sparkSession = CommonUtil.getSparkSession(JobContext.parallelization, config.appName.getOrElse(config.model), sparkCassandraConnectionHost, sparkElasticsearchConnectionHost, Option(readConsistencyLevel), sparkRedisConnectionHost, sparkUserDbRedisIndex)
+    val sparkSession = CommonUtils.getSparkSession(JobContext.parallelization, config.appName.getOrElse(config.model), sparkCassandraConnectionHost, sparkElasticsearchConnectionHost, Option(readConsistencyLevel), sparkRedisConnectionHost, sparkUserDbRedisIndex)
     setReportsStorageConfiguration(config)(sparkSession)
     sparkSession;
 
