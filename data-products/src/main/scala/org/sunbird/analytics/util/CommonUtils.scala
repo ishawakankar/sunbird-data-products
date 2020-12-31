@@ -683,9 +683,9 @@ object CommonUtils {
     val env = AppConf.getConfig("application.env")
     val measures = params;
     val ts = new DateTime().getMillis
-    val mid = CommonUtil.getMessageId("METRIC", producerId + producerPid, ts, None, None);
+    val mid = CommonUtils.getMessageId("METRIC", producerId + producerPid, ts, None, None);
     val context = V3Context(channel, Option(V3PData(producerId, Option("1.0"), Option(producerPid))), env, None, None, None, None)
-    V3DerivedEvent("METRIC", System.currentTimeMillis(), new DateTime().toString(CommonUtil.df3), "3.0", mid, Actor(actorId, "System"), context, None, measures)
+    V3DerivedEvent("METRIC", System.currentTimeMillis(), new DateTime().toString(CommonUtils.df3), "3.0", mid, Actor(actorId, "System"), context, None, measures)
   }
   def getTimestampFromEpoch(epochValue: Long): Timestamp = {
     Timestamp.valueOf(new DateTime(epochValue).withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss.SSS"))
