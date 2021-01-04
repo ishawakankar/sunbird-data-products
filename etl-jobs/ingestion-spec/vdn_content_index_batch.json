@@ -2,7 +2,7 @@
     "type":"index",
     "spec":{
       "dataSchema":{
-        "dataSource":"vdn-content-model-snapshot-tmp",
+        "dataSource":"vdn-content-model-snapshot",
         "parser":{
           "type":"string",
           "parseSpec":{
